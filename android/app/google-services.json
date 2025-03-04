@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "176587927793",
+    "project_id": "eqcart",
+    "storage_bucket": "eqcart.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:176587927793:android:81251bcd3b2725f4dcf950",
+        "android_client_info": {
+          "package_name": "com.capztone.eqcart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJjunasrfzKKc0EPNp-Gs2z_eE-kpNWB0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
