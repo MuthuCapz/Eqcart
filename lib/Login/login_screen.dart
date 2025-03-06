@@ -8,6 +8,9 @@ import 'package:intl/intl.dart';
 
 import 'dart:async';
 
+import '../Map/google_map_screen.dart';
+import '../Map/location_screen.dart';
+
 class RegistrationScreen extends StatefulWidget {
   @override
   _RegistrationScreenState createState() => _RegistrationScreenState();
@@ -64,7 +67,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => MainPage()),
+          MaterialPageRoute(builder: (context) => LocationScreen()),
         );
       }
     } catch (e) {
