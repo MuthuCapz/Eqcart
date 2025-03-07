@@ -1,3 +1,4 @@
+import 'package:eqcart/Map/manual_location_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'google_map_screen.dart';
@@ -64,7 +65,13 @@ class LocationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 30),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ManualLocationScreen()),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
