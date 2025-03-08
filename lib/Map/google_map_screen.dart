@@ -146,7 +146,7 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
         .collection("users")
         .doc(uid)
         .collection("addresses")
-        .doc("address1")
+        .doc()
         .set(addressData);
 
     ScaffoldMessenger.of(context).showSnackBar(
