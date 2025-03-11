@@ -1,5 +1,9 @@
 import 'package:eqcart/Profile/profile_page.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../Map/location_screen.dart';
 
 void main() {
   runApp(const MainPage());
@@ -108,6 +112,28 @@ class _MainPageState extends State<MainPage> {
 }
 
 class HomeScreen extends StatelessWidget {
+  Stream<Map<String, String>?> _addressStream() {
+    String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return Stream.value(null);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('addresses')
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        var data = snapshot.docs.first.data();
+        return {
+          "street": data['street'] ?? '',
+          "city": data['city'] ?? '',
+        };
+      }
+      return null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,52 +150,78 @@ class HomeScreen extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // Only take needed space
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              StreamBuilder<Map<String, String>?>(
+                stream: _addressStream(),
+                builder: (context, snapshot) {
+                  String addressText = "Fetching address...";
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    addressText = "Loading...";
+                  } else if (snapshot.hasError) {
+                    addressText = "Error fetching address";
+                  } else if (snapshot.hasData && snapshot.data != null) {
+                    addressText =
+                        "${snapshot.data?['street']}, ${snapshot.data?['city']}";
+                  } else {
+                    addressText = "No address found";
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("Deliver to",
-                          style:
-                              TextStyle(fontSize: 14, color: Colors.white70)),
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Hassan Bin Thabit Street",
+                          Text("Deliver to",
                               style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                          Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                                  fontSize: 14, color: Colors.white70)),
+                          Row(
+                            children: [
+                              Text(addressText,
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
+                              SizedBox(width: 5),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => LocationScreen()),
+                                  );
+                                },
+                                child: Icon(Icons.keyboard_arrow_down,
+                                    color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'Profile') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ProfilePage()),
+                            );
+                          }
+                        },
+                        icon: Icon(Icons.more_vert, color: Colors.white),
+                        itemBuilder: (BuildContext context) => [
+                          PopupMenuItem(
+                            value: 'Profile',
+                            child: Text('Profile'),
+                          ),
                         ],
                       ),
                     ],
-                  ),
-                  // Three-dot menu moved OUTSIDE search box
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'Profile') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ProfilePage()),
-                        );
-                      }
-                    },
-                    icon: Icon(Icons.more_vert, color: Colors.white),
-                    itemBuilder: (BuildContext context) => [
-                      PopupMenuItem(
-                        value: 'Profile',
-                        child: Text('Profile'),
-                      ),
-                    ],
-                  ),
-                ],
+                  );
+                },
               ),
               SizedBox(height: 10),
-              // Search Box (now independent)
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -190,32 +242,14 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
-        // Prevents overflow by making content scrollable
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text("Welcome to Home Page!",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               SizedBox(height: 20),
-              Container(
-                height: 200,
-                color: Colors.blue[100],
-                child: Center(child: Text("Featured Items")),
-              ),
-              SizedBox(height: 20),
-              Container(
-                height: 300,
-                color: Colors.green[100],
-                child: Center(child: Text("Popular Items")),
-              ),
-              SizedBox(height: 20),
-              Container(
-                height: 400,
-                color: Colors.red[100],
-                child: Center(child: Text("More Categories")),
-              ),
             ],
           ),
         ),
