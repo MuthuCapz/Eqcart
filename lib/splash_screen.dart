@@ -36,7 +36,7 @@ class SplashScreen extends StatelessWidget {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(height: 35), // Moves button slightly lower
+              SizedBox(height: 45), // Moves button slightly lower
               Center(
                 child: ElevatedButton(
                   onPressed: () async {
@@ -62,7 +62,7 @@ class SplashScreen extends StatelessWidget {
                       color: Colors.green,
                       width: 2,
                     ),
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
