@@ -1,4 +1,5 @@
-import 'package:eqcart/splash_screen.dart';
+import 'package:eqcart/presentation/screens/splash/splash_screen.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:firebase_core/firebase_core.dart';
