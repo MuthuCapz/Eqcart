@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geocoding/geocoding.dart';
 
 import '../../../utils/colors.dart';
 
-import '../../widgets/custom_text_field.dart';
-
 import '../../widgets/manual_location_text_field.dart';
-import 'category_button.dart';
-import 'manual_location_logic.dart';
+
+import 'manual_location_update.dart';
 
 class ManualLocationScreen extends StatefulWidget {
   const ManualLocationScreen({super.key});
@@ -23,12 +18,6 @@ class _ManualLocationScreenState extends State<ManualLocationScreen> {
   final AddressController _controller = AddressController();
 
   String? _selectedAddressType;
-
-  void _showSnackbar(String message, {Color color = Colors.red}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
-    );
-  }
 
   Future<void> _saveAddress() async {
     await _controller.saveAddress(context, _formKey, _selectedAddressType);
@@ -113,6 +102,25 @@ class _ManualLocationScreenState extends State<ManualLocationScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class CategoryButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? selectedType;
+  final Function(String) onSelect;
+
+  const CategoryButton(this.icon, this.label, this.selectedType, this.onSelect,
+      {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () => onSelect(label),
+      icon: Icon(icon, color: AppColors.primaryColor),
+      label: Text(label),
     );
   }
 }

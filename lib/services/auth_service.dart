@@ -107,7 +107,7 @@ class AuthService {
               DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
         });
 
-        // ✅ Ensure _auth is not null before using it
+        //  Ensure _auth is not null before using it
         await _auth.signInWithEmailAndPassword(
             email: email, password: password);
       } else {
