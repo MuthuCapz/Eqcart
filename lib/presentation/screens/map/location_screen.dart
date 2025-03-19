@@ -71,7 +71,7 @@ class LocationScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => ManualLocationScreen()),
+                          builder: (context) => GoogleMapScreen()),
                     );
                   },
                   style: OutlinedButton.styleFrom(
@@ -87,7 +87,7 @@ class LocationScreen extends StatelessWidget {
                       Icon(Icons.location_pin, color: AppColors.secondaryColor),
                       SizedBox(width: 10),
                       Text(
-                        "Enter Location Manually",
+                        "Add New Address",
                         style: TextStyle(
                           color: AppColors.secondaryColor,
                           fontSize: 16,
