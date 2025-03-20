@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../utils/colors.dart';
 import 'google_map_screen.dart';
@@ -40,7 +41,11 @@ class LocationScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => GoogleMapScreen()),
+                        builder: (context) => ChangeNotifierProvider(
+                          create: (_) => LocationProvider()..getUserLocation(),
+                          child: GoogleMapScreen(),
+                        ),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -71,7 +76,11 @@ class LocationScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => GoogleMapScreen()),
+                        builder: (context) => ChangeNotifierProvider(
+                          create: (_) => LocationProvider()..getUserLocation(),
+                          child: GoogleMapScreen(),
+                        ),
+                      ),
                     );
                   },
                   style: OutlinedButton.styleFrom(

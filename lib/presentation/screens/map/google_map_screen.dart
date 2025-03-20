@@ -4,7 +4,20 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class GoogleMapScreen extends StatelessWidget {
+class GoogleMapScreen extends StatefulWidget {
+  @override
+  _GoogleMapScreenState createState() => _GoogleMapScreenState();
+}
+
+class _GoogleMapScreenState extends State<GoogleMapScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<LocationProvider>(context, listen: false).getUserLocation();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -24,96 +37,56 @@ class GoogleMapScreen extends StatelessWidget {
             ),
             body: provider.currentPosition == null
                 ? Center(child: CircularProgressIndicator())
-                : Stack(
+                : Column(
                     children: [
-                      //Google Map
-                      GoogleMap(
-                        onMapCreated: (GoogleMapController controller) {
-                          provider.setMapController(controller);
+                      // Increase Map Height by 30dp
 
-                          // Move camera up slightly after loading
-                          Future.delayed(Duration(milliseconds: 300), () {
+                      // Top Section - Google Map
+                      Expanded(
+                        flex:
+                            6, // Increased proportionally to account for extra height
+                        child: GoogleMap(
+                          onMapCreated: (GoogleMapController controller) {
+                            provider.setMapController(controller);
                             controller.animateCamera(
-                              CameraUpdate.newLatLng(
-                                LatLng(
-                                  provider.currentPosition!.latitude - 0.0025,
-                                  provider.currentPosition!.longitude,
-                                ),
-                              ),
+                              CameraUpdate.newLatLngZoom(
+                                  provider.currentPosition!, 14),
                             );
-                          });
-                        },
-                        initialCameraPosition: CameraPosition(
-                          target: provider.currentPosition!,
-                          zoom: 14,
-                        ),
-                        markers: provider.markers,
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
-                        onTap: provider.onMapTapped,
-                        onCameraMove: (position) {
-                          provider.onMapTapped(position.target);
-                        },
-                      ),
-
-                      //Center Marker
-                      Positioned(
-                        top: MediaQuery.of(context).size.height / 2 -
-                            40, // Moves up
-                        left: MediaQuery.of(context).size.width / 2 - 20,
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black87,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                "Selected Location",
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 12),
-                              ),
-                            ),
-                            Icon(Icons.location_on,
-                                size: 40, color: Colors.red),
-                          ],
+                          },
+                          initialCameraPosition: CameraPosition(
+                            target: provider.currentPosition!,
+                            zoom: 14,
+                          ),
+                          markers: provider.markers,
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: false,
+                          onTap: provider.onMapTapped,
+                          onCameraMove: (position) {
+                            provider.onMapTapped(position.target);
+                          },
                         ),
                       ),
 
-                      //Floating GPS Button
-                      Positioned(
-                        top: 100,
-                        right: 15,
-                        child: FloatingActionButton(
-                          onPressed: provider.getUserLocation,
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.my_location, color: Colors.black),
-                        ),
-                      ),
+                      // Add 30dp Space to Push the Bottom Section Down
 
-                      //Bottom Address Input Section
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
+                      // Bottom Section - Address Input
+                      Expanded(
+                        flex:
+                            8, // Adjusted to maintain balance with increased map height
                         child: Container(
                           padding: EdgeInsets.symmetric(
                               horizontal: 20, vertical: 25),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(30)),
+                                BorderRadius.vertical(top: Radius.circular(12)),
                             boxShadow: [
                               BoxShadow(color: Colors.black26, blurRadius: 6)
                             ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              //Confirm Address Title
                               Text(
                                 "Confirm your address",
                                 style: TextStyle(
@@ -121,7 +94,7 @@ class GoogleMapScreen extends StatelessWidget {
                               ),
                               SizedBox(height: 10),
 
-                              //Address Box
+                              // Address Box
                               Container(
                                 padding: EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -141,6 +114,7 @@ class GoogleMapScreen extends StatelessWidget {
                                         style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold),
+                                        maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -151,9 +125,9 @@ class GoogleMapScreen extends StatelessWidget {
 
                               //Enter address manually
                               Text(
-                                "Enter Address Manually",
+                                "Enter address manually",
                                 style: TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.bold),
+                                    fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               SizedBox(height: 5),
                               TextField(
@@ -172,7 +146,7 @@ class GoogleMapScreen extends StatelessWidget {
                               Text(
                                 "Save this address as",
                                 style: TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.bold),
+                                    fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               SizedBox(height: 8),
                               Row(
@@ -219,21 +193,44 @@ class GoogleMapScreen extends StatelessWidget {
   }
 
   Widget _buildTagButton(String label, LocationProvider provider) {
-    return OutlinedButton(
-      onPressed: () => provider.setAddressLabel(label),
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(color: Colors.green, width: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        padding: EdgeInsets.symmetric(horizontal: 33),
+    bool isSelected =
+        provider.addressLabel == label; // Check if this button is selected
+
+    return GestureDetector(
+      onTap: () => provider.setAddressLabel(label),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            vertical: 12, horizontal: 30), // Adjust padding
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.green.withOpacity(0.2)
+              : Colors.white, // Selected box is transparent green
+          border: Border.all(
+            color: isSelected
+                ? Colors.green
+                : Colors.grey, // Border changes on selection
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(25), // Rounded corners
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? Colors.green
+                : Colors.black, // Text color changes when selected
+            fontWeight: isSelected
+                ? FontWeight.bold
+                : FontWeight.normal, // Bold for selected
+          ),
+        ),
       ),
-      child: Text(label, style: TextStyle(color: Colors.green)),
     );
   }
 }
 
 class LocationProvider with ChangeNotifier {
   LatLng? currentPosition;
-  GoogleMapController? _mapController;
   Set<Marker> markers = {};
   String? selectedAddress;
   String addressLabel = "Home"; // Default label
@@ -243,41 +240,43 @@ class LocationProvider with ChangeNotifier {
   }
 
   Future<void> getUserLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      print("Location services are disabled.");
+      await Geolocator.openLocationSettings();
       return;
     }
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        print("Location permissions are denied.");
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print("Location permissions are permanently denied.");
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      currentPosition = LatLng(position.latitude, position.longitude);
 
-    currentPosition = LatLng(position.latitude, position.longitude);
+      markers.clear();
+      markers.add(Marker(
+        markerId: MarkerId("current"),
+        position: currentPosition!,
+      ));
 
-    _updateAddress(currentPosition!);
-    notifyListeners();
+      await _updateAddress(currentPosition!);
+      notifyListeners();
+    } catch (e) {
+      print("Error fetching location: $e");
+    }
   }
 
-  void setMapController(GoogleMapController controller) {
-    _mapController = controller;
-  }
+  void setMapController(GoogleMapController controller) {}
 
   void onMapTapped(LatLng position) {
     currentPosition = position;
@@ -296,8 +295,20 @@ class LocationProvider with ChangeNotifier {
           await placemarkFromCoordinates(position.latitude, position.longitude);
 
       if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+
+        // Avoid duplicate values
+        String name = place.name ?? "";
+        String street = place.street ?? "";
+
+        if (name == street) {
+          name = ""; // Remove duplicate entry
+        }
+
         selectedAddress =
-            "${placemarks.first.street}, ${placemarks.first.locality}, ${placemarks.first.administrativeArea}";
+            "${name.isNotEmpty ? "$name, " : ""}${street.isNotEmpty ? "$street, " : ""}"
+            "${place.subLocality}, ${place.locality}, ${place.administrativeArea} "
+            "${place.postalCode}, ${place.country}";
       } else {
         selectedAddress = "Unknown location";
       }
@@ -307,16 +318,16 @@ class LocationProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setAddressLabel(String label) {
-    addressLabel = label;
-    notifyListeners();
-  }
-
   void confirmLocation(BuildContext context) {
     if (selectedAddress != null) {
       print("Confirmed Address: $selectedAddress ($addressLabel)");
       Navigator.pop(
           context, {"address": selectedAddress, "label": addressLabel});
     }
+  }
+
+  void setAddressLabel(String label) {
+    addressLabel = label;
+    notifyListeners();
   }
 }
