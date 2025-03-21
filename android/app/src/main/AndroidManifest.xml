@@ -21,7 +21,9 @@
     <application
         android:label="eqcart"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -51,8 +53,15 @@
             android:value="2" />
 
         <meta-data
+            android:name="com.google.android.gms.common.logging.LOGGER_LEVEL"
+            android:value="WARN" />
+        <meta-data
+            android:name="com.google.android.gms.maps.MAP_ID"
+            android:value="8bce64099fa6306a"/>
+
+        <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyA5-ud85vVh3adPqblRnLwtsTHBlwJkMoI"/>
+            android:value="AIzaSyAjqd4z5SD4hys2lfNQfZnbTVH8TTqUE3c"/>
 
 
     </application>
