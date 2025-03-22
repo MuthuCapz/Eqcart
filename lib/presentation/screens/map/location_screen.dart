@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'current_location_update.dart';
 import '../../../utils/colors.dart';
 import 'google_map_screen.dart';
-import 'manual_location_screen.dart';
 
 class LocationScreen extends StatelessWidget {
   const LocationScreen({super.key});

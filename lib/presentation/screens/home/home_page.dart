@@ -7,25 +7,47 @@ import '../map/location_screen.dart';
 import '../profile/profile_page.dart';
 
 class HomeScreen extends StatelessWidget {
-  Stream<Map<String, String>?> _addressStream() {
+  Stream<String?> _addressStream() {
     String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (uid.isEmpty) return Stream.value(null);
+    if (uid.isEmpty) return Stream.value("No user ID found");
 
     return FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('addresses')
-        .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        var data = snapshot.docs.first.data();
-        return {
-          "street": data['street'] ?? '',
-          "city": data['city'] ?? '',
-        };
+      try {
+        for (var doc in snapshot.docs) {
+          var data = doc.data();
+          var mapLocation = data['map_location'] as Map<String, dynamic>?;
+
+          if (mapLocation != null && mapLocation['isDefault'] == true) {
+            String fullAddress =
+                mapLocation['address'] ?? 'No address available';
+
+            // Extract street and city
+            List<String> parts = fullAddress.split(',');
+            if (parts.length >= 3) {
+              String street = parts[1].trim();
+              String city = parts[2].trim();
+              String formattedAddress = "$street, $city";
+
+              // Limit to 33 characters and add "..."
+              if (formattedAddress.length > 33) {
+                formattedAddress = formattedAddress.substring(0, 30) + "...";
+              }
+
+              return formattedAddress;
+            }
+
+            return fullAddress; // Fallback in case format is unexpected
+          }
+        }
+        return 'No default address found';
+      } catch (e) {
+        return 'Error fetching address: ${e.toString()}';
       }
-      return null;
     });
   }
 
@@ -48,7 +70,7 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              StreamBuilder<Map<String, String>?>(
+              StreamBuilder<String?>(
                 stream: _addressStream(),
                 builder: (context, snapshot) {
                   String addressText = "Fetching address...";
@@ -57,8 +79,7 @@ class HomeScreen extends StatelessWidget {
                   } else if (snapshot.hasError) {
                     addressText = "Error fetching address";
                   } else if (snapshot.hasData && snapshot.data != null) {
-                    addressText =
-                        "${snapshot.data?['street']}, ${snapshot.data?['city']}";
+                    addressText = snapshot.data!;
                   } else {
                     addressText = "No address found";
                   }
@@ -98,11 +119,15 @@ class HomeScreen extends StatelessWidget {
                       PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'Profile') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ProfilePage()),
-                            );
+                            _addressStream().first.then((address) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProfilePage(
+                                      address: address ?? "No address found"),
+                                ),
+                              );
+                            });
                           }
                         },
                         icon: Icon(Icons.more_vert, color: Colors.white),

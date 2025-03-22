@@ -7,7 +7,9 @@ import 'profile_ui.dart';
 import 'profile_functions.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String address;
+
+  const ProfilePage({super.key, required this.address});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -33,9 +35,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showPhoneNumberDialog() {
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     String fullPhoneNumber = "";
     TextEditingController phoneController = TextEditingController();
-    bool isValid = false; // Flag to track validity
 
     showDialog(
       barrierDismissible: false,
@@ -45,31 +47,33 @@ class _ProfilePageState extends State<ProfilePage> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("Add Mobile Number"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Enter your mobile number to proceed."),
-              const SizedBox(height: 10),
-              IntlPhoneField(
-                controller: phoneController,
-                initialCountryCode: 'IN',
-                decoration: const InputDecoration(
-                  labelText: "Phone Number",
-                  border: OutlineInputBorder(),
+          content: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Enter your mobile number to proceed."),
+                const SizedBox(height: 10),
+                IntlPhoneField(
+                  controller: phoneController,
+                  initialCountryCode: 'IN',
+                  decoration: const InputDecoration(
+                    labelText: "Phone Number",
+                    border: OutlineInputBorder(),
+                  ),
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  onChanged: (phone) {
+                    fullPhoneNumber = phone.completeNumber;
+                  },
+                  validator: (phone) {
+                    if (phone == null || !phone.isValidNumber()) {
+                      return "Enter a valid phone number!";
+                    }
+                    return null;
+                  },
                 ),
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                onChanged: (phone) {
-                  fullPhoneNumber = phone.completeNumber;
-                  isValid = phone.isValidNumber(); // Validate number
-                },
-                validator: (phone) {
-                  if (phone == null || !phone.isValidNumber()) {
-                    return "Enter a valid phone number!";
-                  }
-                  return null;
-                },
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -78,15 +82,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             TextButton(
               onPressed: () async {
-                if (!isValid) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Invalid phone number!"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
+                if (!_formKey.currentState!.validate()) return;
 
                 User? user = _auth.currentUser;
                 if (user == null) return;
@@ -149,60 +145,40 @@ class _ProfilePageState extends State<ProfilePage> {
           String email = userData['email'] ?? 'N/A';
           String phone = userData['phone'] ?? 'N/A';
 
-          return StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('users')
-                .doc(user.uid)
-                .collection('addresses')
-                .limit(1)
-                .snapshots(),
-            builder: (context, addressSnapshot) {
-              String address = 'N/A';
-              if (addressSnapshot.hasData &&
-                  addressSnapshot.data!.docs.isNotEmpty) {
-                var addressData = addressSnapshot.data!.docs.first.data()
-                    as Map<String, dynamic>;
-                address =
-                    "${addressData['street'] ?? 'N/A'}, ${addressData['city'] ?? 'N/A'}";
-              }
-
-              return Padding(
-                padding: const EdgeInsets.all(30.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 30),
-                      buildProfilePicture(
-                          profilePicUrl, () => updateProfilePicture(context)),
-                      const SizedBox(height: 60),
-                      buildProfileField('Name', name),
-                      buildProfileField('Email', email),
-                      buildProfileField('Phone', phone),
-                      buildProfileField('Address', address),
-                      const SizedBox(height: 100),
-                      Center(
-                        child: ElevatedButton.icon(
-                          onPressed: () =>
-                              showLogoutConfirmationDialog(context),
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          label: const Text("Logout",
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondaryColor,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                            textStyle: const TextStyle(fontSize: 16),
-                          ),
-                        ),
+          return Padding(
+            padding: const EdgeInsets.all(30.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 30),
+                  buildProfilePicture(
+                      profilePicUrl, () => updateProfilePicture(context)),
+                  const SizedBox(height: 60),
+                  buildProfileField('Name', name),
+                  buildProfileField('Email', email),
+                  buildProfileField('Phone', phone),
+                  buildProfileField('Address', widget.address),
+                  const SizedBox(height: 100),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () => showLogoutConfirmationDialog(context),
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                      label: const Text("Logout",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondaryColor,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        textStyle: const TextStyle(fontSize: 16),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              );
-            },
+                ],
+              ),
+            ),
           );
         },
       ),

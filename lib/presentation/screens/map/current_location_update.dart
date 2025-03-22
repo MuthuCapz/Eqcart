@@ -7,137 +7,240 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../home/main_page.dart';
 
-class LocationProvider extends ChangeNotifier {
-  GoogleMapController? _mapController;
-  LatLng? _currentPosition;
-  LatLng? _selectedPosition;
-  Set<Marker> _markers = {};
+class LocationProvider with ChangeNotifier {
+  LatLng? currentPosition;
+  Set<Marker> markers = {};
+  String? selectedAddress;
+  String? manualAddress;
+  String addressLabel = "Home"; // Default label
+  TextEditingController searchController = TextEditingController();
+  List<Location> searchResults = [];
+  LocationProvider() {
+    getUserLocation();
+  }
+  Future<void> searchPlaces(String query) async {
+    if (query.isEmpty) {
+      searchResults.clear();
+      notifyListeners();
+      return;
+    }
 
-  String street = "";
-  String city = "";
-  String state = "";
-  String zipcode = "";
-  String fullAddress = "";
+    try {
+      List<Location> locations = await locationFromAddress(query);
+      searchResults = locations;
+      notifyListeners();
+    } catch (e) {
+      print("Error searching for location: $e");
+    }
+  }
 
-  LatLng? get currentPosition => _currentPosition;
-  LatLng? get selectedPosition => _selectedPosition;
-  Set<Marker> get markers => _markers;
+  void moveToSearchedLocation(
+      Location location, GoogleMapController controller) {
+    LatLng newPosition = LatLng(location.latitude, location.longitude);
 
-  void setMapController(GoogleMapController controller) {
-    _mapController = controller;
+    // Move the camera
+    controller.animateCamera(CameraUpdate.newLatLngZoom(newPosition, 14));
+
+    // Update marker
+    markers.clear();
+    markers.add(Marker(
+      markerId: MarkerId("searched"),
+      position: newPosition,
+    ));
+
+    // Update address
+    _updateAddress(newPosition);
+    notifyListeners();
   }
 
   Future<void> getUserLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+      return;
+    }
+
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) return;
+      if (permission == LocationPermission.denied) {
+        return;
+      }
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
 
-    _currentPosition = LatLng(position.latitude, position.longitude);
-    _selectedPosition = _currentPosition;
-    _updateMarker(_currentPosition!, "Your Location");
-    _mapController
-        ?.animateCamera(CameraUpdate.newLatLngZoom(_currentPosition!, 14));
-    _fetchAddressFromLatLng(_currentPosition!);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      currentPosition = LatLng(position.latitude, position.longitude);
+
+      markers.clear();
+      markers.add(Marker(
+        markerId: MarkerId("current"),
+        position: currentPosition!,
+      ));
+
+      await _updateAddress(currentPosition!);
+      notifyListeners();
+    } catch (e) {
+      print("Error fetching location: $e");
+    }
   }
 
-  Future<void> _fetchAddressFromLatLng(LatLng position) async {
+  void setMapController(GoogleMapController controller) {}
+
+  void onMapTapped(LatLng position) {
+    currentPosition = position;
+    markers.clear();
+    markers.add(Marker(
+      markerId: MarkerId("selected"),
+      position: position,
+    ));
+    _updateAddress(position);
+    notifyListeners();
+  }
+
+  Future<void> _updateAddress(LatLng position) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
 
-        String houseNumber = place.subThoroughfare ?? "";
-        String streetName = place.thoroughfare ?? "";
+        // Avoid duplicate values
+        String name = place.name ?? "";
+        String street = place.street ?? "";
 
-        if (streetName.isEmpty) {
-          streetName = place.subLocality ?? place.locality ?? "Unknown Street";
+        if (name == street) {
+          name = ""; // Remove duplicate entry
         }
 
-        if (houseNumber.isNotEmpty) {
-          street = "$houseNumber, $streetName";
-        } else {
-          street = streetName;
-        }
-
-        city = place.locality ?? place.subAdministrativeArea ?? "Unknown City";
-        state = place.administrativeArea ?? "Unknown State";
-        zipcode = place.postalCode ?? "000000";
-
-        fullAddress = "$street, $city, $state, $zipcode";
+        selectedAddress =
+            "${name.isNotEmpty ? "$name, " : ""}${street.isNotEmpty ? "$street, " : ""}"
+            "${place.subLocality}, ${place.locality}, ${place.administrativeArea} "
+            "${place.postalCode}, ${place.country}";
       } else {
-        print("Geocoding returned an empty list.");
+        selectedAddress = "Unknown location";
       }
     } catch (e) {
-      print("Error fetching address: $e");
+      selectedAddress = "Address not found";
     }
+    notifyListeners();
   }
 
-  void onMapTapped(LatLng position) {
-    _selectedPosition = position;
-    _updateMarker(position, "Selected Location");
-    _mapController?.animateCamera(CameraUpdate.newLatLng(position));
-    _fetchAddressFromLatLng(position);
-  }
-
-  Future<void> confirmLocation(BuildContext context) async {
-    if (_selectedPosition == null) {
+  void confirmLocation(BuildContext context) async {
+    if (selectedAddress == null || selectedAddress == "Fetching address...") {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select a location first")),
+        SnackBar(content: Text("Please select a valid address.")),
       );
       return;
     }
 
-    if (street.isEmpty || city.isEmpty || state.isEmpty || zipcode.isEmpty) {
-      print("Address fields are empty, retrying fetch...");
-      await _fetchAddressFromLatLng(_selectedPosition!);
-    }
-
-    String uid = FirebaseAuth.instance.currentUser!.uid;
-
-    Map<String, dynamic> addressData = {
-      "latitude": _selectedPosition!.latitude,
-      "longitude": _selectedPosition!.longitude,
-      "street": street,
-      "city": city,
-      "state": state,
-      "zipcode": zipcode,
-      "address": fullAddress,
-      "isDefault": true,
-    };
-
-    await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .collection("addresses")
-        .doc()
-        .set(addressData);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Location saved successfully!")),
-    );
-
+    await _storeAddressToFirestore(context);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => MainPage()),
     );
   }
 
-  void _updateMarker(LatLng position, String title) {
-    _markers.clear();
-    _markers.add(Marker(
-        markerId: MarkerId("selected_location"),
-        position: position,
-        infoWindow: InfoWindow(title: title)));
+  Future<void> _storeAddressToFirestore(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef =
+        FirebaseFirestore.instance.collection("users").doc(user.uid);
+    final addressRef = userRef.collection("addresses");
+
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+
+    // Validate manual address before saving
+    bool hasManualAddress = manualAddress != null && manualAddress!.isNotEmpty;
+    double? manualLat, manualLng;
+
+    if (hasManualAddress) {
+      try {
+        List<Location> locations = await locationFromAddress(manualAddress!);
+        if (locations.isNotEmpty) {
+          manualLat = locations.first.latitude;
+          manualLng = locations.first.longitude;
+        } else {
+          throw Exception("Invalid Address");
+        }
+      } catch (e) {
+        print("Invalid manual address: $e");
+        // Show Toast instead of navigating
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    "Invalid address. Please check your address and try again.")),
+          );
+        }
+        return; // Stop execution, do NOT navigate
+      }
+    }
+
+    // Get all existing address documents
+    final snapshot = await addressRef.get();
+
+    // Ensure `isDefault` is false for all address types first
+    for (var doc in snapshot.docs) {
+      batch.update(addressRef.doc(doc.id), {
+        "map_location.isDefault": false,
+        "manual_location.isDefault": false,
+      });
+    }
+
+    // Prepare data for the selected address type
+    Map<String, dynamic> addressData = {
+      "map_location": {
+        "address": selectedAddress,
+        "latitude": currentPosition?.latitude,
+        "longitude": currentPosition?.longitude,
+        "isDefault": true, // Make only this true
+        "createDateTime": FieldValue.serverTimestamp(),
+        "updateDateTime": FieldValue.serverTimestamp(),
+      }
+    };
+
+    if (hasManualAddress) {
+      addressData["manual_location"] = {
+        "address": manualAddress,
+        "latitude": manualLat,
+        "longitude": manualLng,
+        "isDefault": true, // Make only this true
+        "createDateTime": FieldValue.serverTimestamp(),
+        "updateDateTime": FieldValue.serverTimestamp(),
+      };
+    } else {
+      addressData["manual_location"] = {"isDefault": true};
+    }
+
+    // Set data for the selected address type
+    batch.set(
+        addressRef.doc(addressLabel), addressData, SetOptions(merge: true));
+
+    // Commit the batch write
+    await batch.commit();
+
+    // Navigate only if everything is valid
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => MainPage()),
+    );
+  }
+
+  void setAddressLabel(String label) {
+    addressLabel = label;
+    notifyListeners();
+  }
+
+  void setManualAddress(String address) {
+    manualAddress = address;
     notifyListeners();
   }
 }
