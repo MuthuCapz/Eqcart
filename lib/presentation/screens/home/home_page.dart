@@ -1,56 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../utils/colors.dart';
 import '../map/location_screen.dart';
 import '../profile/profile_page.dart';
+import 'home_page_content/address_content.dart';
+import 'home_page_content/category_content.dart';
 
 class HomeScreen extends StatelessWidget {
-  Stream<String?> _addressStream() {
-    String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (uid.isEmpty) return Stream.value("No user ID found");
-
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('addresses')
-        .snapshots()
-        .map((snapshot) {
-      try {
-        for (var doc in snapshot.docs) {
-          var data = doc.data();
-          var mapLocation = data['map_location'] as Map<String, dynamic>?;
-
-          if (mapLocation != null && mapLocation['isDefault'] == true) {
-            String fullAddress =
-                mapLocation['address'] ?? 'No address available';
-
-            // Extract street and city
-            List<String> parts = fullAddress.split(',');
-            if (parts.length >= 3) {
-              String street = parts[1].trim();
-              String city = parts[2].trim();
-              String formattedAddress = "$street, $city";
-
-              // Limit to 33 characters and add "..."
-              if (formattedAddress.length > 33) {
-                formattedAddress = formattedAddress.substring(0, 30) + "...";
-              }
-
-              return formattedAddress;
-            }
-
-            return fullAddress; // Fallback in case format is unexpected
-          }
-        }
-        return 'No default address found';
-      } catch (e) {
-        return 'Error fetching address: ${e.toString()}';
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,7 +27,7 @@ class HomeScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               StreamBuilder<String?>(
-                stream: _addressStream(),
+                stream: addressStream(),
                 builder: (context, snapshot) {
                   String addressText = "Fetching address...";
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -119,7 +75,7 @@ class HomeScreen extends StatelessWidget {
                       PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'Profile') {
-                            _addressStream().first.then((address) {
+                            addressStream().first.then((address) {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -162,19 +118,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text("Welcome to Home Page!",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
+      body: HomeBody(),
     );
   }
 }

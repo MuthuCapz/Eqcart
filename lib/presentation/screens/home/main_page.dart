@@ -1,12 +1,11 @@
+// bottom side navigation bar code
+
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../utils/colors.dart';
 import '../cart/cart_page.dart';
 import '../favourite/favourite_page.dart';
-import '../map/location_screen.dart';
-import '../profile/profile_page.dart';
+
 import '../settings/settings_page.dart';
 import 'home_page.dart';
 
