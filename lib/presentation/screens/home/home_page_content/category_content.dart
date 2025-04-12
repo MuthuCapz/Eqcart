@@ -1,7 +1,13 @@
-import 'package:eqcart/utils/colors.dart';
 import 'package:flutter/material.dart';
 
-class HomeBody extends StatelessWidget {
+import 'banner_carousel.dart';
+
+class HomeBody extends StatefulWidget {
+  @override
+  _HomeBodyState createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<HomeBody> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -10,41 +16,11 @@ class HomeBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildBanner(),
+            const BannerCarousel(),
             SizedBox(height: 20),
             _buildCategoryList(),
             SizedBox(height: 20),
             _buildPopularService(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBanner() {
-    return Container(
-      height: 150,
-      decoration: BoxDecoration(
-        color: Colors.blueAccent,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Up to 50% Off!",
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
-            Text("Order Now to Avail the Offer",
-                style: TextStyle(fontSize: 14, color: Colors.white70)),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: Text("Eqcart the Offer Now"),
-            ),
           ],
         ),
       ),
