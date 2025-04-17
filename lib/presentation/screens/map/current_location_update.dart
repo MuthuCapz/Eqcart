@@ -8,9 +8,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../home/main_page.dart';
 
 class LocationProvider with ChangeNotifier {
+  String? selectedAddress;
   LatLng? currentPosition;
   Set<Marker> markers = {};
-  String? selectedAddress;
+
   String? manualAddress;
   String addressLabel = "Home"; // Default label
   TextEditingController searchController = TextEditingController();
@@ -140,11 +141,103 @@ class LocationProvider with ChangeNotifier {
       return;
     }
 
-    await _storeAddressToFirestore(context);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => MainPage()),
-    );
+    if (currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Could not get your location.")),
+      );
+      return;
+    }
+
+    final userLat = currentPosition!.latitude;
+    final userLng = currentPosition!.longitude;
+    bool isDeliverable = false;
+
+    try {
+      final settingsData = [
+        {
+          "settingsCollection": "shops_settings",
+          "shopCollection": "shops",
+        },
+        {
+          "settingsCollection": "own_shops_settings",
+          "shopCollection": "own_shops",
+        }
+      ];
+
+      for (var config in settingsData) {
+        final settingsSnap = await FirebaseFirestore.instance
+            .collection(config["settingsCollection"]!)
+            .get();
+
+        for (var settingsDoc in settingsSnap.docs) {
+          final shopId = settingsDoc.id;
+          final userDistanceKm =
+              (settingsDoc.data()["userDistance"] ?? 0).toDouble();
+
+          final shopDoc = await FirebaseFirestore.instance
+              .collection(config["shopCollection"]!)
+              .doc(shopId)
+              .get();
+
+          if (!shopDoc.exists) continue;
+
+          final location = shopDoc.data()?["location"];
+          if (location == null ||
+              location["latitude"] == null ||
+              location["longitude"] == null) {
+            continue;
+          }
+
+          final shopLat = location["latitude"];
+          final shopLng = location["longitude"];
+
+          final distanceInMeters = Geolocator.distanceBetween(
+            userLat,
+            userLng,
+            shopLat,
+            shopLng,
+          );
+
+          final distanceInKm = distanceInMeters / 1000;
+
+          if (distanceInKm <= userDistanceKm) {
+            isDeliverable = true;
+            break;
+          }
+        }
+
+        if (isDeliverable) break;
+      }
+    } catch (e) {
+      print("Error checking delivery availability: $e");
+    }
+
+    if (isDeliverable) {
+      await _storeAddressToFirestore(context);
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => MainPage()),
+        );
+      }
+    } else {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Out of Delivery Area"),
+            content:
+                Text("Sorry, we do not deliver to your selected location."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("OK"),
+              )
+            ],
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _storeAddressToFirestore(BuildContext context) async {

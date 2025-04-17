@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'banner_carousel.dart';
@@ -8,6 +9,116 @@ class HomeBody extends StatefulWidget {
 }
 
 class _HomeBodyState extends State<HomeBody> {
+  final ValueNotifier<List<Map<String, dynamic>>> _categoriesNotifier =
+      ValueNotifier<List<Map<String, dynamic>>>([
+    {
+      "category_name": "Milk",
+      "category_offer": "Loading",
+      "image_url": "https://via.placeholder.com/100"
+    },
+    {
+      "category_name": "Grocery",
+      "category_offer": "Loading",
+      "image_url": "https://via.placeholder.com/100"
+    },
+    {
+      "category_name": "Snacks",
+      "category_offer": "Loading",
+      "image_url": "https://via.placeholder.com/100"
+    },
+  ]);
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToCategories();
+  }
+
+  void _listenToCategories() {
+    FirebaseFirestore.instance
+        .collection('main_categories')
+        .limit(1)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data();
+        final categories = data['categories'];
+        if (categories != null && categories is List) {
+          _categoriesNotifier.value =
+              List<Map<String, dynamic>>.from(categories);
+        }
+      }
+    });
+  }
+
+  Widget _buildCategoryList() {
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: _categoriesNotifier,
+      builder: (context, categories, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Category",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: categories.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Column(
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 35,
+                              backgroundImage:
+                                  NetworkImage(category["image_url"] ?? ""),
+                              backgroundColor: Colors.grey[300],
+                            ),
+                            if (category["category_offer"] != null &&
+                                category["category_offer"]
+                                    .toString()
+                                    .isNotEmpty)
+                              Positioned(
+                                top: 0,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    category["category_offer"],
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          category["category_name"] ?? '',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -24,56 +135,6 @@ class _HomeBodyState extends State<HomeBody> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCategoryList() {
-    List<Map<String, dynamic>> categories = [
-      {
-        "name": "Milk",
-        "icon": Icons.production_quantity_limits_outlined,
-        "color": Colors.orange
-      },
-      {
-        "name": "Clothing",
-        "icon": Icons.production_quantity_limits,
-        "color": Colors.green
-      },
-      {
-        "name": "Grocery",
-        "icon": Icons.production_quantity_limits_rounded,
-        "color": Colors.blue
-      },
-      {
-        "name": "Medicine",
-        "icon": Icons.production_quantity_limits_sharp,
-        "color": Colors.brown
-      },
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Category",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: categories.map((category) {
-            return Column(
-              children: [
-                CircleAvatar(
-                  backgroundColor: category["color"],
-                  radius: 30,
-                  child: Icon(category["icon"], color: Colors.white, size: 30),
-                ),
-                SizedBox(height: 5),
-                Text(category["name"], style: TextStyle(fontSize: 14)),
-              ],
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
