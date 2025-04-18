@@ -60,7 +60,7 @@ class LocationScreen extends StatelessWidget {
                       Icon(Icons.location_pin, color: Colors.white),
                       SizedBox(width: 10),
                       Text(
-                        "Pick Your Current Location",
+                        "Pick Your Delivery  Location",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
