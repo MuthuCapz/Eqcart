@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'banner_carousel.dart';
+import 'category_shops_page.dart';
 
 class HomeBody extends StatefulWidget {
   @override
@@ -65,49 +66,62 @@ class _HomeBodyState extends State<HomeBody> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: categories.map((category) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Column(
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            CircleAvatar(
-                              radius: 35,
-                              backgroundImage:
-                                  NetworkImage(category["image_url"] ?? ""),
-                              backgroundColor: Colors.grey[300],
-                            ),
-                            if (category["category_offer"] != null &&
-                                category["category_offer"]
-                                    .toString()
-                                    .isNotEmpty)
-                              Positioned(
-                                top: 0,
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.redAccent,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    category["category_offer"],
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
+                  final categoryName = category["category_name"] ?? '';
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CategoryShopsPage(
+                            categoryName: categoryName,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Column(
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircleAvatar(
+                                radius: 35,
+                                backgroundImage:
+                                    NetworkImage(category["image_url"] ?? ""),
+                                backgroundColor: Colors.grey[300],
+                              ),
+                              if (category["category_offer"] != null &&
+                                  category["category_offer"]
+                                      .toString()
+                                      .isNotEmpty)
+                                Positioned(
+                                  top: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      category["category_offer"],
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          category["category_name"] ?? '',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ],
+                            ],
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            categoryName,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
