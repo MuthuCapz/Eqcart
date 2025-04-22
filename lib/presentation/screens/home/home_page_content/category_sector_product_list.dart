@@ -47,12 +47,18 @@ class ProductListView extends StatelessWidget {
           return const Center(child: Text("No products found."));
         }
 
-        return ListView.builder(
+        return GridView.builder(
           padding: const EdgeInsets.all(12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 180,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 12,
+          ),
           itemCount: products.length,
           itemBuilder: (context, index) {
             final data = products[index].data() as Map<String, dynamic>;
-            return _ProductCard(product: data);
+            return _ProductGridCard(product: data);
           },
         );
       },
@@ -60,118 +66,197 @@ class ProductListView extends StatelessWidget {
   }
 }
 
-class _ProductCard extends StatelessWidget {
+class _ProductGridCard extends StatefulWidget {
   final Map<String, dynamic> product;
 
-  const _ProductCard({required this.product});
+  const _ProductGridCard({required this.product});
+
+  @override
+  State<_ProductGridCard> createState() => _ProductGridCardState();
+}
+
+class _ProductGridCardState extends State<_ProductGridCard> {
+  int quantity = 0;
+  bool isFavorite = false;
 
   @override
   Widget build(BuildContext context) {
+    final product = widget.product;
     final variants = product['variants'] as List<dynamic>?;
 
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// Product Header Row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: product['image_url'] ?? '',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) =>
-                        const CircularProgressIndicator(strokeWidth: 2),
-                    errorWidget: (_, __, ___) =>
-                        const Icon(Icons.image_not_supported, size: 50),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primaryColor,
+          width: 0.3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// Product Image with Overlays
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: CachedNetworkImage(
+                  imageUrl: product['image_url'] ?? '',
+                  height: 90,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) =>
+                      const Center(child: CircularProgressIndicator()),
+                  errorWidget: (_, __, ___) =>
+                      const Icon(Icons.broken_image_outlined, size: 50),
+                ),
+              ),
+
+              /// Offer Badge - Top Left
+              if ((product['discount'] ?? 0) > 0)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${product['discount']}% OFF',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+
+              /// Add Icon - Top Right
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    /// Favorite Icon below Add Button
+                    GestureDetector(
+                      onTap: () => setState(() => isFavorite = !isFavorite),
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 14,
+                        child: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : Colors.grey,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          /// Product Info
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// Product Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         product['product_name'] ?? 'No Name',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       if (product['product_weight'] != null)
-                        Text(
-                          '${product['product_weight']} kg',
-                          style: TextStyle(color: Colors.grey[700]),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            '${product['product_weight']} kg',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 12),
+                          ),
                         ),
+                      const SizedBox(height: 6),
                       Text(
                         '₹${(product['product_price'] ?? 0).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E5128),
                         ),
                       ),
-                      if ((product['discount'] ?? 0) > 0)
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${product['discount']}% OFF',
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
-                if (variants != null && variants.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.arrow_drop_down_circle_outlined),
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(20)),
-                        ),
-                        builder: (_) => VariantBottomSheet(
-                          imageUrl: product['image_url'],
-                          productName: product['product_name'] ?? '',
-                          variants: List<Map<String, dynamic>>.from(
-                              product['variants'] ?? []),
-                        ),
-                      );
+
+                /// Add Icon
+                Padding(
+                  padding:
+                      const EdgeInsets.only(top: 15), // Move it down slightly
+                  child: GestureDetector(
+                    onTap: () {
+                      if (variants != null && variants.isNotEmpty) {
+                        showModalBottomSheet(
+                          context: context,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (_) => VariantBottomSheet(
+                            imageUrl: product['image_url'],
+                            productName: product['product_name'] ?? '',
+                            variants: List<Map<String, dynamic>>.from(
+                                product['variants'] ?? []),
+                          ),
+                        );
+                      } else {
+                        setState(
+                            () => quantity == 0 ? quantity = 1 : quantity++);
+                      }
                     },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryColor, // Background
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primaryColor, // Stroke
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        size: 20,
+                        color: Colors.white, // Symbol
+                      ),
+                    ),
                   ),
+                ),
               ],
             ),
-
-            const SizedBox(height: 10),
-
-            if (product['description'] != null)
-              Text(
-                product['description'],
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
