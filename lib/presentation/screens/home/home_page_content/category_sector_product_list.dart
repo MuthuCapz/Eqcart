@@ -51,7 +51,7 @@ class ProductListView extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisExtent: 180,
+            mainAxisExtent: 225,
             crossAxisSpacing: 10,
             mainAxisSpacing: 12,
           ),
@@ -76,7 +76,6 @@ class _ProductGridCard extends StatefulWidget {
 }
 
 class _ProductGridCardState extends State<_ProductGridCard> {
-  int quantity = 0;
   bool isFavorite = false;
 
   @override
@@ -110,7 +109,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                 borderRadius: BorderRadius.circular(20),
                 child: CachedNetworkImage(
                   imageUrl: product['image_url'] ?? '',
-                  height: 90,
+                  height: 125,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   placeholder: (_, __) =>
@@ -150,7 +149,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    /// Favorite Icon below Add Button
+                    /// Favorite Icon
                     GestureDetector(
                       onTap: () => setState(() => isFavorite = !isFavorite),
                       child: CircleAvatar(
@@ -171,7 +170,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
 
           /// Product Info
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -217,24 +216,28 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                       const EdgeInsets.only(top: 15), // Move it down slightly
                   child: GestureDetector(
                     onTap: () {
-                      if (variants != null && variants.isNotEmpty) {
-                        showModalBottomSheet(
-                          context: context,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(20)),
-                          ),
-                          builder: (_) => VariantBottomSheet(
-                            imageUrl: product['image_url'],
-                            productName: product['product_name'] ?? '',
-                            variants: List<Map<String, dynamic>>.from(
-                                product['variants'] ?? []),
-                          ),
-                        );
-                      } else {
-                        setState(
-                            () => quantity == 0 ? quantity = 1 : quantity++);
-                      }
+                      // Show the VariantBottomSheet regardless of variants
+                      showModalBottomSheet(
+                        context: context,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        builder: (_) => VariantBottomSheet(
+                          imageUrl: product['image_url'] ?? '',
+                          productName: product['product_name'] ?? '',
+                          variants: variants != null && variants.isNotEmpty
+                              ? List<Map<String, dynamic>>.from(
+                                  product['variants'] ?? [])
+                              : [],
+                          productWeight:
+                              product['product_weight']?.toString() ?? '',
+                          productPrice: product['product_price'].toInt(),
+                          productMRP: product['product_mrp'] ??
+                              product['product_price'].toInt(),
+                          discount: product['discount'].toInt(),
+                        ),
+                      );
                     },
                     child: Container(
                       padding: const EdgeInsets.all(6),
@@ -262,177 +265,244 @@ class _ProductGridCardState extends State<_ProductGridCard> {
   }
 }
 
-class VariantBottomSheet extends StatefulWidget {
+class VariantBottomSheet extends StatelessWidget {
   final String productName;
   final String imageUrl;
   final List<Map<String, dynamic>> variants;
+  final String productWeight;
+  final int productPrice;
+  final int productMRP;
+  final int discount;
 
   const VariantBottomSheet({
     super.key,
     required this.productName,
     required this.imageUrl,
     required this.variants,
+    required this.productWeight,
+    required this.productPrice,
+    required this.productMRP,
+    required this.discount,
   });
 
   @override
-  State<VariantBottomSheet> createState() => _VariantBottomSheetState();
-}
-
-class _VariantBottomSheetState extends State<VariantBottomSheet> {
-  Map<int, int> cartCounts = {};
-
-  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+            // Title
+            Center(
+              child: Text(
+                productName,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Main product
+            _buildVariantTile(
+              volume: productWeight,
+              price: productPrice,
+              mrp: productMRP,
+              discount: discount,
+            ),
+
+            // Variant List
+            ListView.builder(
+              itemCount: variants.length,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, index) {
+                final variant = variants[index];
+                final price = (variant['price'] as num).toInt();
+                final mrp = (variant['mrp'] as num?)?.toInt() ?? 0;
+                final volume = variant['volume']?.toString() ?? '';
+                final discount = (mrp > price && mrp != 0)
+                    ? ((mrp - price) * 100 ~/ mrp)
+                    : 0;
+
+                return _buildVariantTile(
+                  volume: volume,
+                  price: price,
+                  mrp: mrp,
+                  discount: discount,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantTile({
+    required String volume,
+    required int price,
+    required int mrp,
+    required int discount,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            widget.productName,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          // Image - cached
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              width: 55,
+              height: 55,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                width: 55,
+                height: 55,
+                color: Colors.grey[200],
+              ),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
             ),
           ),
-          const SizedBox(height: 16),
-          ...List.generate(widget.variants.length, (index) {
-            final variant = widget.variants[index];
-            final volume = variant['volume'] ?? '';
-            final price = variant['price'] ?? 0;
-            final mrp = variant['mrp'] ?? 0;
-            final discount = mrp > price ? ((mrp - price) * 100 ~/ mrp) : 0;
-            final count = cartCounts[index] ?? 0;
+          const SizedBox(width: 16),
 
-            return Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  /// Image
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: widget.imageUrl,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) =>
-                          const Icon(Icons.image, size: 50),
-                    ),
-                  ),
+          // Center content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_formatWeight(volume),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text('₹$price',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 6),
+                    if (mrp > price)
+                      Text('₹$mrp',
+                          style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough)),
+                    const SizedBox(width: 6),
+                    if (discount > 0)
+                      Text('$discount% OFF',
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.green)),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
-                  const SizedBox(width: 25),
-
-                  /// Center Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (discount > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            margin: const EdgeInsets.only(bottom: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade100,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '$discount% OFF',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.deepOrange),
-                            ),
-                          ),
-                        Text(
-                          '$volume',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              '₹$price',
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green),
-                            ),
-                            const SizedBox(width: 6),
-                            if (discount > 0)
-                              Text(
-                                '₹$mrp',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  /// Right Add/Counter
-                  count == 0
-                      ? ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              cartCounts[index] = 1;
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondaryColor,
-                            foregroundColor: Colors.white,
-                            side:
-                                const BorderSide(color: AppColors.primaryColor),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                          ),
-                          child: const Text('ADD'),
-                        )
-                      : Row(
-                          children: [
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  if (cartCounts[index]! > 1) {
-                                    cartCounts[index] = cartCounts[index]! - 1;
-                                  } else {
-                                    cartCounts.remove(index);
-                                  }
-                                });
-                              },
-                              icon: const Icon(Icons.remove_circle_outline),
-                            ),
-                            Text(
-                              '${cartCounts[index]}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  cartCounts[index] = cartCounts[index]! + 1;
-                                });
-                              },
-                              icon: const Icon(Icons.add_circle_outline),
-                            ),
-                          ],
-                        ),
-                ],
-              ),
-            );
-          }),
+          // Add/Qty button
+          _AddToCartButton(),
         ],
       ),
     );
+  }
+}
+
+String _formatWeight(String volume) {
+  // Lowercase check for units
+  final lower = volume.toLowerCase();
+
+  // If it already contains units like 'kg', 'g', 'ml', 'l', etc., return as is
+  if (lower.contains('kg') ||
+      lower.contains('g') ||
+      lower.contains('ml') ||
+      lower.contains('lit') ||
+      lower.contains('ltr') ||
+      lower.contains('pcs') ||
+      lower.contains('piece')) {
+    return volume;
+  }
+
+  // Else, assume 'kg' is missing
+  return '$volume kg';
+}
+
+// Dummy button UI
+class _AddToCartButton extends StatefulWidget {
+  @override
+  State<_AddToCartButton> createState() => _AddToCartButtonState();
+}
+
+class _AddToCartButtonState extends State<_AddToCartButton> {
+  int quantity = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return quantity == 0
+        ? ElevatedButton(
+            onPressed: () {
+              setState(() {
+                quantity = 1;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text(
+              "Add",
+              style: TextStyle(color: Colors.white),
+            ),
+          )
+        : Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    if (quantity > 0) quantity--;
+                  });
+                },
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Text('$quantity', style: const TextStyle(fontSize: 16)),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    quantity++;
+                  });
+                },
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          );
   }
 }
