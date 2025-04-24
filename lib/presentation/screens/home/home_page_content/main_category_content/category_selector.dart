@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../../utils/colors.dart';
+import '../../../../../utils/colors.dart';
 
 class CategorySelector extends StatelessWidget {
   final List<Map<String, dynamic>> categories;

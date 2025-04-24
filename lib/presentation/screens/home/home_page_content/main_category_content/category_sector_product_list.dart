@@ -1,9 +1,11 @@
+import 'package:eqcart/presentation/screens/home/home_page_content/main_category_content/variants_product_bottomsheet.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../../utils/colors.dart';
+import '../../../../../utils/colors.dart';
 
 class ProductListView extends StatelessWidget {
   final String shopId;
@@ -77,6 +79,7 @@ class _ProductGridCard extends StatefulWidget {
 
 class _ProductGridCardState extends State<_ProductGridCard> {
   bool isFavorite = false;
+  final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +239,13 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                           productMRP: product['product_mrp'] ??
                               product['product_price'].toInt(),
                           discount: product['discount'].toInt(),
+                          userId:
+                              userId, // <-- make sure this variable is available
+                          productId: product[
+                              'sku_id'], // or the appropriate field for product ID
+                          onCartUpdated: () {
+                            // You can do something here like refreshing state if needed
+                          },
                         ),
                       );
                     },
@@ -262,247 +272,5 @@ class _ProductGridCardState extends State<_ProductGridCard> {
         ],
       ),
     );
-  }
-}
-
-class VariantBottomSheet extends StatelessWidget {
-  final String productName;
-  final String imageUrl;
-  final List<Map<String, dynamic>> variants;
-  final String productWeight;
-  final int productPrice;
-  final int productMRP;
-  final int discount;
-
-  const VariantBottomSheet({
-    super.key,
-    required this.productName,
-    required this.imageUrl,
-    required this.variants,
-    required this.productWeight,
-    required this.productPrice,
-    required this.productMRP,
-    required this.discount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 5,
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(5),
-              ),
-            ),
-            // Title
-            Center(
-              child: Text(
-                productName,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Main product
-            _buildVariantTile(
-              volume: productWeight,
-              price: productPrice,
-              mrp: productMRP,
-              discount: discount,
-            ),
-
-            // Variant List
-            ListView.builder(
-              itemCount: variants.length,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemBuilder: (context, index) {
-                final variant = variants[index];
-                final price = (variant['price'] as num).toInt();
-                final mrp = (variant['mrp'] as num?)?.toInt() ?? 0;
-                final volume = variant['volume']?.toString() ?? '';
-                final discount = (mrp > price && mrp != 0)
-                    ? ((mrp - price) * 100 ~/ mrp)
-                    : 0;
-
-                return _buildVariantTile(
-                  volume: volume,
-                  price: price,
-                  mrp: mrp,
-                  discount: discount,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVariantTile({
-    required String volume,
-    required int price,
-    required int mrp,
-    required int discount,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          )
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Image - cached
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: 55,
-              height: 55,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                width: 55,
-                height: 55,
-                color: Colors.grey[200],
-              ),
-              errorWidget: (context, url, error) => const Icon(Icons.error),
-            ),
-          ),
-          const SizedBox(width: 16),
-
-          // Center content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_formatWeight(volume),
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text('₹$price',
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 6),
-                    if (mrp > price)
-                      Text('₹$mrp',
-                          style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                              decoration: TextDecoration.lineThrough)),
-                    const SizedBox(width: 6),
-                    if (discount > 0)
-                      Text('$discount% OFF',
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.green)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Add/Qty button
-          _AddToCartButton(),
-        ],
-      ),
-    );
-  }
-}
-
-String _formatWeight(String volume) {
-  // Lowercase check for units
-  final lower = volume.toLowerCase();
-
-  // If it already contains units like 'kg', 'g', 'ml', 'l', etc., return as is
-  if (lower.contains('kg') ||
-      lower.contains('g') ||
-      lower.contains('ml') ||
-      lower.contains('lit') ||
-      lower.contains('ltr') ||
-      lower.contains('pcs') ||
-      lower.contains('piece')) {
-    return volume;
-  }
-
-  // Else, assume 'kg' is missing
-  return '$volume kg';
-}
-
-// Dummy button UI
-class _AddToCartButton extends StatefulWidget {
-  @override
-  State<_AddToCartButton> createState() => _AddToCartButtonState();
-}
-
-class _AddToCartButtonState extends State<_AddToCartButton> {
-  int quantity = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return quantity == 0
-        ? ElevatedButton(
-            onPressed: () {
-              setState(() {
-                quantity = 1;
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text(
-              "Add",
-              style: TextStyle(color: Colors.white),
-            ),
-          )
-        : Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    if (quantity > 0) quantity--;
-                  });
-                },
-                icon: const Icon(Icons.remove_circle_outline),
-              ),
-              Text('$quantity', style: const TextStyle(fontSize: 16)),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    quantity++;
-                  });
-                },
-                icon: const Icon(Icons.add_circle_outline),
-              ),
-            ],
-          );
   }
 }

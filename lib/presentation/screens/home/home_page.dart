@@ -4,7 +4,8 @@ import '../../../utils/colors.dart';
 import '../map/location_screen.dart';
 import '../profile/profile_page.dart';
 import 'home_page_content/address_content.dart';
-import 'home_page_content/category_content.dart';
+
+import 'home_page_content/main_category_content/main_category_content.dart';
 
 class HomeScreen extends StatelessWidget {
   @override

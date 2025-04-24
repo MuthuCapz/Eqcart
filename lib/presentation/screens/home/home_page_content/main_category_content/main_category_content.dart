@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import 'banner_carousel.dart';
-import 'category_shops_page.dart';
+import '../banner_carousel.dart';
+import 'main_category_shops_page.dart';
 
 class HomeBody extends StatefulWidget {
   @override

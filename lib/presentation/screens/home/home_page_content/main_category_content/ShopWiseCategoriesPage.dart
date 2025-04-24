@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
 
-import '../../../../utils/colors.dart';
+import '../../../../../utils/colors.dart';
 import 'category_sector_product_list.dart';
 import 'category_selector.dart';
 

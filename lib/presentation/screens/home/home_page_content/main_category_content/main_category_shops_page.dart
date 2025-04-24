@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
-import '../../../../utils/colors.dart';
+import '../../../../../utils/colors.dart';
 import 'ShopWiseCategoriesPage.dart';
 
 class CategoryShopsPage extends StatefulWidget {
