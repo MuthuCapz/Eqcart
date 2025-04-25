@@ -1,3 +1,4 @@
+import 'package:eqcart/presentation/screens/home/cart_controller.dart';
 import 'package:eqcart/presentation/screens/home/home_page_content/banner_provider.dart';
 import 'package:eqcart/presentation/screens/splash/splash_screen.dart';
 
@@ -10,7 +11,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => CartController(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

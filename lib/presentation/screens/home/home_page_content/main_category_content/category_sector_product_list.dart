@@ -2,10 +2,14 @@ import 'package:eqcart/presentation/screens/home/home_page_content/main_category
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../../utils/colors.dart';
+import '../../../cart/cart_page.dart';
+import '../../cart_controller.dart';
+import '../../view_cart_bar.dart';
 
 class ProductListView extends StatelessWidget {
   final String shopId;
@@ -36,34 +40,66 @@ class ProductListView extends StatelessWidget {
       (snap1, snap2) => [...snap1.docs, ...snap2.docs],
     );
 
-    return StreamBuilder<List<DocumentSnapshot>>(
-      stream: combinedStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Stack(
+      children: [
+        /// Product List
+        StreamBuilder<List<DocumentSnapshot>>(
+          stream: combinedStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        final products = snapshot.data ?? [];
+            final products = snapshot.data ?? [];
 
-        if (products.isEmpty) {
-          return const Center(child: Text("No products found."));
-        }
+            if (products.isEmpty) {
+              return const Center(child: Text("No products found."));
+            }
 
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisExtent: 225,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: products.length,
-          itemBuilder: (context, index) {
-            final data = products[index].data() as Map<String, dynamic>;
-            return _ProductGridCard(product: data);
+            return GridView.builder(
+              padding: const EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                  top: 12,
+                  bottom: 80), // extra bottom padding
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisExtent: 225,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                final data = products[index].data() as Map<String, dynamic>;
+                return _ProductGridCard(product: data);
+              },
+            );
           },
-        );
-      },
+        ),
+
+        /// ViewCartBar at Bottom
+        Positioned(
+          bottom: 10,
+          left: 20,
+          right: 20,
+          child: Consumer<CartController>(
+            builder: (context, cartController, child) {
+              return ViewCartBar(
+                totalItems: cartController.totalItems,
+                totalPrice: cartController.totalPrice,
+                onTap: () {
+                  // Navigate to Cart Page or Cart Tab
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => CartPage()), // adjust path
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

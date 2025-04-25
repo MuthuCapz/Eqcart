@@ -2,9 +2,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../../../../../utils/colors.dart';
+import '../../../cart/cart_page.dart';
+import '../../cart_controller.dart';
+import '../../view_cart_bar.dart';
 import 'ShopWiseCategoriesPage.dart';
 
 class CategoryShopsPage extends StatefulWidget {
@@ -84,43 +88,67 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
         backgroundColor: AppColors.secondaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: FutureBuilder<List<String>>(
-        future: _matchedShopIdsFuture,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final matchedShopIds = snapshot.data!;
-          if (matchedShopIds.isEmpty) {
-            return const Center(
-              child: Text("No shops available for this category."),
-            );
-          }
-
-          return StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _shopStream(matchedShopIds),
-            builder: (context, shopSnapshot) {
-              if (!shopSnapshot.hasData) {
+      body: Stack(
+        children: [
+          FutureBuilder<List<String>>(
+            future: _matchedShopIdsFuture,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final shops = shopSnapshot.data!;
-              if (shops.isEmpty) {
+              final matchedShopIds = snapshot.data!;
+              if (matchedShopIds.isEmpty) {
                 return const Center(
-                    child: Text("No shops available for this category."));
+                  child: Text("No shops available for this category."),
+                );
               }
 
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: shops.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  final shop = shops[index];
-                  return _buildShopTile(shop);
+              return StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _shopStream(matchedShopIds),
+                builder: (context, shopSnapshot) {
+                  if (!shopSnapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final shops = shopSnapshot.data!;
+                  if (shops.isEmpty) {
+                    return const Center(
+                        child: Text("No shops available for this category."));
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(
+                        16, 16, 16, 80), // 👈 add bottom padding for the bar
+                    itemCount: shops.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final shop = shops[index];
+                      return _buildShopTile(shop);
+                    },
+                  );
                 },
               );
             },
-          );
-        },
+          ),
+          Positioned(
+            bottom: 10,
+            left: 20,
+            right: 20,
+            child: Consumer<CartController>(
+              builder: (context, cart, _) {
+                return ViewCartBar(
+                  totalItems: cart.totalItems,
+                  totalPrice: cart.totalPrice,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => CartPage()),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
