@@ -1,8 +1,10 @@
+import 'package:eqcart/presentation/screens/home/main_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../utils/colors.dart';
+import 'add_tip_dialog.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -15,6 +17,8 @@ class _CartPageState extends State<CartPage> {
   bool showCouponField = false;
   List<Map<String, dynamic>> cartItems = [];
   double totalAmount = 0;
+  double deliveryTipAmount = 0;
+
   final TextEditingController _couponController = TextEditingController();
 
   @override
@@ -160,81 +164,133 @@ class _CartPageState extends State<CartPage> {
             );
           }),
 
-          // Coupon Section
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                        color: AppColors.secondaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle),
-                    child: const Icon(Icons.local_offer_outlined,
-                        color: AppColors.secondaryColor),
-                  ),
-                  title: const Text("Apply Coupon",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: IconButton(
-                    icon: Icon(showCouponField
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down),
-                    onPressed: () {
-                      setState(() {
-                        showCouponField = !showCouponField;
-                      });
-                    },
-                  ),
-                ),
-                if (showCouponField)
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _couponController,
-                            decoration: InputDecoration(
-                              hintText: "Enter coupon code",
-                              filled: true,
-                              fillColor: Colors.grey[100],
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+          Column(
+            children: [
+              const SizedBox(height: 5),
+
+              // Add More Products Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => MainPage()),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize
+                              .min, // important to keep button small
+                          children: [
+                            Icon(Icons.add, size: 20, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Add More',
+                              style: TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                          ),
-                          child: const Text('Apply'),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Coupon Section
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: AppColors.secondaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle),
+                        child: const Icon(Icons.local_offer_outlined,
+                            color: AppColors.secondaryColor),
+                      ),
+                      title: const Text("Apply Coupon",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: IconButton(
+                        icon: Icon(showCouponField
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down),
+                        onPressed: () {
+                          setState(() {
+                            showCouponField = !showCouponField;
+                          });
+                        },
+                      ),
+                    ),
+                    if (showCouponField)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _couponController,
+                                decoration: InputDecoration(
+                                  hintText: "Enter coupon code",
+                                  filled: true,
+                                  fillColor: Colors.grey[100],
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondaryColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                              ),
+                              child: const Text('Apply'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // Bill Summary
+
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -251,13 +307,33 @@ class _CartPageState extends State<CartPage> {
                 _buildBillRow('Subtotal', totalAmount),
                 _buildBillRow('Delivery Fee', 25),
                 _buildBillRow('Taxes & Charges', 10),
+                _buildBillRow('Gift Packing Charge', 30),
+                _buildBillRow(
+                  'Delivery Tips',
+                  deliveryTipAmount,
+                  onTapTip: () async {
+                    double? selectedTip = await showDialog(
+                      context: context,
+                      builder: (context) =>
+                          AddTipDialog(initialTip: deliveryTipAmount),
+                    );
+
+                    if (selectedTip != null) {
+                      setState(() {
+                        deliveryTipAmount = selectedTip;
+                      });
+                    }
+                  },
+                ),
                 const Divider(height: 24),
-                _buildBillRow('Total', totalAmount + 25 + 10, isTotal: true),
+                _buildBillRow(
+                    'Total', totalAmount + 25 + 10 + deliveryTipAmount,
+                    isTotal: true),
               ],
             ),
           ),
 
-          const SizedBox(height: 20), // Padding for bottom bar
+          const SizedBox(height: 15), // Padding for bottom bar
         ],
       ),
 
@@ -299,20 +375,34 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildBillRow(String label, double amount, {bool isTotal = false}) {
+  Widget _buildBillRow(
+    String label,
+    double amount, {
+    bool isTotal = false,
+    VoidCallback? onTapTip,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Text(
+            label,
+            style: TextStyle(
+              color: isTotal ? Colors.black : Colors.grey[600],
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          GestureDetector(
+            onTap: onTapTip,
+            child: Text(
+              amount == 0 ? 'Add Tip' : '₹${amount.toInt()}',
               style: TextStyle(
-                  color: isTotal ? Colors.black : Colors.grey[600],
-                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-          Text('₹$amount',
-              style: TextStyle(
-                  color: isTotal ? Colors.black : Colors.grey[600],
-                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
+                color: amount == 0 ? Colors.red : Colors.black,
+                fontWeight: amount == 0 ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
         ],
       ),
     );
