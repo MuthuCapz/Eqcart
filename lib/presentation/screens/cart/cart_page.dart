@@ -365,7 +365,7 @@ class _CartPageState extends State<CartPage> {
               const Text('Proceed to Checkout',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(width: 8),
-              Text('₹${totalAmount + 25 + 10}',
+              Text('₹${totalAmount + 25 + 10 + deliveryTipAmount}',
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold)),
             ],
