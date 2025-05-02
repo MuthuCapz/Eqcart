@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../utils/colors.dart';
 import 'add_tip_dialog.dart';
+import 'checkout_bottom_sheet.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -351,12 +352,21 @@ class _CartPageState extends State<CartPage> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: () {},
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              builder: (context) => CheckoutBottomSheet(
+                totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
+              ),
+            );
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.secondaryColor,
             foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           child: Row(
