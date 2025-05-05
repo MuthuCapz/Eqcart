@@ -1,9 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'checkout_functions.dart';
 
 class CheckoutBottomSheet extends StatefulWidget {
   final double totalAmount;
 
-  const CheckoutBottomSheet({Key? key, required this.totalAmount}) : super(key: key);
+  const CheckoutBottomSheet({Key? key, required this.totalAmount})
+      : super(key: key);
 
   @override
   State<CheckoutBottomSheet> createState() => _CheckoutBottomSheetState();
@@ -11,10 +14,43 @@ class CheckoutBottomSheet extends StatefulWidget {
 
 class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
   bool isWalletUsed = false;
+  late PaymentService paymentService;
+  double walletBalance = 0.0;
 
-  void _handleGooglePayTap() {
-    // TODO: Add Razorpay payment gateway trigger here
-    print('Google Pay tapped!');
+  @override
+  void initState() {
+    super.initState();
+    paymentService = PaymentService(
+      context: context,
+      orderTotalAmount: widget.totalAmount,
+      onOrderCompleted: () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const OrderSuccessPage()),
+        );
+      },
+    );
+    paymentService.init();
+    fetchWalletBalance();
+  }
+
+  @override
+  void dispose() {
+    paymentService.dispose();
+    super.dispose();
+  }
+
+  Future<void> fetchWalletBalance() async {
+    walletBalance = await PaymentService.getWalletBalance();
+    setState(() {});
+  }
+
+  void onPlaceOrderPressed() {
+    if (isWalletUsed) {
+      paymentService.handlePlaceOrder();
+    } else {
+      paymentService.openCheckout(widget.totalAmount);
+    }
   }
 
   @override
@@ -32,7 +68,9 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
 
           // Google Pay Option
           GestureDetector(
-            onTap: _handleGooglePayTap,
+            onTap: () {
+              paymentService.openCheckout(widget.totalAmount);
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               decoration: BoxDecoration(
@@ -43,15 +81,14 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
                 children: [
                   Image.asset('assets/images/google_logo.png', height: 24),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Google Pay',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
+                  const Text('Google Pay',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                   const Spacer(),
                   const Icon(Icons.arrow_forward_ios, size: 16),
                 ],
               ),
-            ),   
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -65,9 +102,18 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
             ),
             child: Row(
               children: [
-                const Text(
-                  'Eqcart Wallet',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Eqcart Wallet',
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Balance: ₹${walletBalance.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                 ),
                 const Spacer(),
                 Switch(
@@ -89,36 +135,70 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${widget.totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                '₹${widget.totalAmount.toStringAsFixed(2)}',
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, // Red color button
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  backgroundColor: Colors.red,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                onPressed: () {
-                  // TODO: Add place order logic here
-                  print('Place Order pressed');
-                },
+                onPressed: onPlaceOrderPressed,
                 child: const Text(
                   'Place Order',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
-              )
+              ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class OrderSuccessPage extends StatelessWidget {
+  const OrderSuccessPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle, size: 120, color: Colors.green),
+            const SizedBox(height: 20),
+            const Text(
+              "Order Placed Successfully!",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'Continue Shopping',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
