@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../utils/colors.dart';
 import 'checkout_functions.dart';
 
 class CheckoutBottomSheet extends StatefulWidget {
@@ -56,92 +56,54 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        color: AppColors.backgroundColor,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 8),
-
-          // Google Pay Option
-          GestureDetector(
-            onTap: () {
-              paymentService.openCheckout(widget.totalAmount);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[200],
-              ),
-              child: Row(
-                children: [
-                  Image.asset('assets/images/google_logo.png', height: 24),
-                  const SizedBox(width: 12),
-                  const Text('Google Pay',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                  const Spacer(),
-                  const Icon(Icons.arrow_forward_ios, size: 16),
-                ],
-              ),
+          Container(
+            height: 5,
+            width: 50,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // Eqcart Wallet Option
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.grey[200],
-            ),
-            child: Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Eqcart Wallet',
-                        style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Balance: ₹${walletBalance.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Switch(
-                  value: isWalletUsed,
-                  onChanged: (value) {
-                    setState(() {
-                      isWalletUsed = value;
-                    });
-                  },
-                ),
-              ],
-            ),
+          // Payment Methods
+          Column(
+            children: [
+              _buildPaymentOption(
+                icon: Image.asset('assets/images/google_logo.png', height: 28),
+                title: "Pay with Google Pay",
+                onTap: () => paymentService.openCheckout(widget.totalAmount),
+              ),
+              const SizedBox(height: 16),
+              _buildWalletOption(),
+            ],
           ),
 
           const SizedBox(height: 24),
 
-          // Total and Place Order Button
+          // Total + Place Order
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '₹${widget.totalAmount.toStringAsFixed(2)}',
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                'Total: ₹${widget.totalAmount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor,
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.primaryColor,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -152,12 +114,108 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
                 child: const Text(
                   'Place Order',
                   style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentOption(
+      {required Widget icon,
+      required String title,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AppColors.secondaryColor, width: 0.3),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            icon,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios,
+                size: 16, color: AppColors.primaryColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWalletOption() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.secondaryColor, width: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet,
+              color: AppColors.primaryColor, size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Eqcart Wallet",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Balance: ₹${walletBalance.toStringAsFixed(2)}",
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            activeColor: AppColors.primaryColor,
+            value: isWalletUsed,
+            onChanged: (value) {
+              setState(() {
+                isWalletUsed = value;
+              });
+            },
           ),
         ],
       ),
@@ -171,21 +229,25 @@ class OrderSuccessPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.backgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle, size: 120, color: Colors.green),
+            const Icon(Icons.check_circle_rounded,
+                size: 140, color: AppColors.primaryColor),
             const SizedBox(height: 20),
             const Text(
-              "Order Placed Successfully!",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              "Order Successful!",
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor),
             ),
             const SizedBox(height: 30),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.secondaryColor,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
               ),

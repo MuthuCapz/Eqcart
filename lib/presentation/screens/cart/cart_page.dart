@@ -19,8 +19,13 @@ class _CartPageState extends State<CartPage> {
   List<Map<String, dynamic>> cartItems = [];
   double totalAmount = 0;
   double deliveryTipAmount = 0;
-
+  bool isOrderSummaryExpanded = false;
   final TextEditingController _couponController = TextEditingController();
+  String orderType = 'Instant Order'; // Default
+  String selectedDate = '';
+  String selectedTime = '';
+  List<String> dateSlots = [];
+  List<String> timeSlots = [];
 
   @override
   void initState() {
@@ -289,6 +294,124 @@ class _CartPageState extends State<CartPage> {
           ),
 
           const SizedBox(height: 20),
+// Choose Order Type Section
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Choose Order Type',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _buildOrderTypeButton('Instant Order'),
+                    const SizedBox(width: 10),
+                    _buildOrderTypeButton('Pre Order'),
+                  ],
+                ),
+                if (orderType == 'Pre Order') ...[
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Select Delivery Date',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 50,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: dateSlots.length,
+                      itemBuilder: (context, index) {
+                        final date = dateSlots[index];
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedDate = date;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selectedDate == date
+                                  ? AppColors.secondaryColor
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                date,
+                                style: TextStyle(
+                                  color: selectedDate == date
+                                      ? Colors.white
+                                      : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Select Delivery Time Slot',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 50,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: timeSlots.length,
+                      itemBuilder: (context, index) {
+                        final time = timeSlots[index];
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedTime = time;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selectedTime == time
+                                  ? AppColors.secondaryColor
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                time,
+                                style: TextStyle(
+                                  color: selectedTime == time
+                                      ? Colors.white
+                                      : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
 
           // Bill Summary
 
@@ -301,35 +424,67 @@ class _CartPageState extends State<CartPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Order Summary',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                _buildBillRow('Subtotal', totalAmount),
-                _buildBillRow('Delivery Fee', 25),
-                _buildBillRow('Taxes & Charges', 10),
-                _buildBillRow('Gift Packing Charge', 30),
-                _buildBillRow(
-                  'Delivery Tips',
-                  deliveryTipAmount,
-                  onTapTip: () async {
-                    double? selectedTip = await showDialog(
-                      context: context,
-                      builder: (context) =>
-                          AddTipDialog(initialTip: deliveryTipAmount),
-                    );
-
-                    if (selectedTip != null) {
-                      setState(() {
-                        deliveryTipAmount = selectedTip;
-                      });
-                    }
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      isOrderSummaryExpanded = !isOrderSummaryExpanded;
+                    });
                   },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Order Summary',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Icon(
+                        isOrderSummaryExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                      ),
+                    ],
+                  ),
                 ),
-                const Divider(height: 24),
-                _buildBillRow(
-                    'Total', totalAmount + 25 + 10 + deliveryTipAmount,
-                    isTotal: true),
+                const SizedBox(height: 12),
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildBillRow('Subtotal', totalAmount),
+                      _buildBillRow('Delivery Fee', 25),
+                      _buildBillRow('Taxes & Charges', 10),
+                      _buildBillRow('Gift Packing Charge', 30),
+                      _buildBillRow(
+                        'Delivery Tips',
+                        deliveryTipAmount,
+                        onTapTip: () async {
+                          double? selectedTip = await showDialog(
+                            context: context,
+                            builder: (context) =>
+                                AddTipDialog(initialTip: deliveryTipAmount),
+                          );
+                          if (selectedTip != null) {
+                            setState(() {
+                              deliveryTipAmount = selectedTip;
+                            });
+                          }
+                        },
+                      ),
+                      const Divider(height: 24),
+                      _buildBillRow(
+                        'Total',
+                        totalAmount + 25 + 10 + deliveryTipAmount,
+                        isTotal: true,
+                      ),
+                    ],
+                  ),
+                  crossFadeState: isOrderSummaryExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 300),
+                ),
               ],
             ),
           ),
@@ -366,7 +521,8 @@ class _CartPageState extends State<CartPage> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.secondaryColor,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           child: Row(
@@ -383,6 +539,69 @@ class _CartPageState extends State<CartPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildOrderTypeButton(String type) {
+    final isSelected = orderType == type;
+    return Expanded(
+      child: ElevatedButton(
+        onPressed: () {
+          setState(() {
+            orderType = type;
+            if (orderType == 'Pre Order') {
+              generateDateSlots();
+              fetchTimeSlots();
+            }
+          });
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isSelected ? AppColors.secondaryColor : Colors.grey[200],
+          foregroundColor: isSelected ? Colors.white : Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: Text(
+          type,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  void generateDateSlots() {
+    dateSlots.clear();
+    DateTime today = DateTime.now();
+    for (int i = 0; i <= 9; i++) {
+      DateTime date = today.add(Duration(days: i));
+      String formattedDate;
+      if (i == 0) {
+        formattedDate = 'Today';
+      } else {
+        formattedDate = '${_weekdayName(date.weekday)} ${date.day}';
+      }
+      dateSlots.add(formattedDate);
+    }
+  }
+
+  String _weekdayName(int weekday) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[weekday - 1];
+  }
+
+  void fetchTimeSlots() {
+    FirebaseFirestore.instance
+        .collection('own_shops_settings')
+        .doc('R4IElilPwlaujoKm7p9h')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        List<dynamic> slots = snapshot.data()?['slotTiming'] ?? [];
+        setState(() {
+          timeSlots = slots.map((e) => e.toString()).toList();
+        });
+      }
+    });
   }
 
   Widget _buildBillRow(
