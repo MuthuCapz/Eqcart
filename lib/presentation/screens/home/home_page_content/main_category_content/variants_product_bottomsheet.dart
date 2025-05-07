@@ -12,6 +12,7 @@ class VariantBottomSheet extends StatelessWidget {
   final int discount;
   final String userId;
   final String productId;
+  final String shopId;
   final VoidCallback onCartUpdated;
 
   const VariantBottomSheet({
@@ -25,6 +26,7 @@ class VariantBottomSheet extends StatelessWidget {
     required this.discount,
     required this.userId,
     required this.productId,
+    required this.shopId,
     required this.onCartUpdated,
   });
 
@@ -179,6 +181,7 @@ class VariantBottomSheet extends StatelessWidget {
             imageUrl: imageUrl,
             variantKey: productWeight,
             variantWeight: volume,
+            shopId: shopId,
             onCartUpdated: onCartUpdated,
           ),
         ],

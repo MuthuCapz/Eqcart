@@ -71,7 +71,10 @@ class ProductListView extends StatelessWidget {
               itemCount: products.length,
               itemBuilder: (context, index) {
                 final data = products[index].data() as Map<String, dynamic>;
-                return _ProductGridCard(product: data);
+                return _ProductGridCard(
+                  product: data,
+                  shopId: shopId,
+                );
               },
             );
           },
@@ -106,8 +109,9 @@ class ProductListView extends StatelessWidget {
 
 class _ProductGridCard extends StatefulWidget {
   final Map<String, dynamic> product;
+  final String shopId;
 
-  const _ProductGridCard({required this.product});
+  const _ProductGridCard({required this.product, required this.shopId});
 
   @override
   State<_ProductGridCard> createState() => _ProductGridCardState();
@@ -279,6 +283,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                               userId, // <-- make sure this variable is available
                           productId: product[
                               'sku_id'], // or the appropriate field for product ID
+                          shopId: widget.shopId,
                           onCartUpdated: () {
                             // You can do something here like refreshing state if needed
                           },

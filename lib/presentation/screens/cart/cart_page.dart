@@ -1,11 +1,16 @@
-import 'package:eqcart/presentation/screens/home/main_page.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../utils/colors.dart';
+
+import '../home/main_page.dart';
 import 'add_tip_dialog.dart';
 import 'checkout_bottom_sheet.dart';
+import 'cart_item_widget.dart';
+import 'order_type_selector.dart';
+import 'bill_summary_widget.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -21,16 +26,20 @@ class _CartPageState extends State<CartPage> {
   double deliveryTipAmount = 0;
   bool isOrderSummaryExpanded = false;
   final TextEditingController _couponController = TextEditingController();
-  String orderType = 'Instant Order'; // Default
-  String selectedDate = '';
+  String orderType = 'Delivery Now';
+  String selectedDate = 'Today';
   String selectedTime = '';
   List<String> dateSlots = [];
   List<String> timeSlots = [];
+  late Timer _timer;
+  bool isDeliveryNowEnabled = true;
+  bool isTodayEnabled = true;
 
   @override
   void initState() {
     super.initState();
     fetchCartItems();
+    startTimerForOrderType();
   }
 
   @override
@@ -54,516 +63,239 @@ class _CartPageState extends State<CartPage> {
           ...cartItems.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    // Cached Image
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: item['image_url'] ?? '',
-                          fit: BoxFit.cover,
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.error),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    // Product Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (item['product_name'] ?? '').toString().length > 25
-                                ? '${item['product_name'].toString().substring(0, 25)}...'
-                                : item['product_name'].toString(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item['variant_weight'] ?? '',
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 14),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '₹${(item['price'] ?? 0) * (item['quantity'] ?? 1)}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    /// Quantity Selector
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 1, horizontal: 0),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryColor.withOpacity(0.1),
-                        borderRadius:
-                            BorderRadius.circular(50), // Reduced border radius
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove,
-                                size: 14), // Reduced icon size
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                                minWidth: 10,
-                                minHeight: 10), // Reduced button size
-                            onPressed: () =>
-                                updateQuantity(index, item['quantity'] - 1),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              '${item['quantity']}',
-                              style: const TextStyle(
-                                  fontSize: 12), // Reduced text size
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add,
-                                size: 14), // Reduced icon size
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                                minWidth: 10,
-                                minHeight: 10), // Reduced button size
-                            onPressed: () =>
-                                updateQuantity(index, item['quantity'] + 1),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _showDeleteConfirmationDialog(index),
-                    ),
-                  ],
-                ),
-              ),
+            return CartItemWidget(
+              item: item,
+              onQuantityChanged: (newQuantity) =>
+                  updateQuantity(index, newQuantity),
+              onDelete: () => _showDeleteConfirmationDialog(index),
             );
           }),
 
           Column(
             children: [
               const SizedBox(height: 5),
-
-              // Add More Products Button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => MainPage()),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.secondaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize
-                              .min, // important to keep button small
-                          children: [
-                            Icon(Icons.add, size: 20, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text(
-                              'Add More',
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
+              _buildAddMoreProductsButton(),
               const SizedBox(height: 16),
-
-              // Coupon Section
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                            color: AppColors.secondaryColor.withOpacity(0.1),
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.local_offer_outlined,
-                            color: AppColors.secondaryColor),
-                      ),
-                      title: const Text("Apply Coupon",
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      trailing: IconButton(
-                        icon: Icon(showCouponField
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down),
-                        onPressed: () {
-                          setState(() {
-                            showCouponField = !showCouponField;
-                          });
-                        },
-                      ),
-                    ),
-                    if (showCouponField)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _couponController,
-                                decoration: InputDecoration(
-                                  hintText: "Enter coupon code",
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                  border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide.none),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondaryColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                              ),
-                              child: const Text('Apply'),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              _buildCouponSection(),
             ],
           ),
 
           const SizedBox(height: 20),
-// Choose Order Type Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Choose Order Type',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _buildOrderTypeButton('Instant Order'),
-                    const SizedBox(width: 10),
-                    _buildOrderTypeButton('Pre Order'),
-                  ],
-                ),
-                if (orderType == 'Pre Order') ...[
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Select Delivery Date',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 50,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: dateSlots.length,
-                      itemBuilder: (context, index) {
-                        final date = dateSlots[index];
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedDate = date;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selectedDate == date
-                                  ? AppColors.secondaryColor
-                                  : Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                date,
-                                style: TextStyle(
-                                  color: selectedDate == date
-                                      ? Colors.white
-                                      : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Select Delivery Time Slot',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 50,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: timeSlots.length,
-                      itemBuilder: (context, index) {
-                        final time = timeSlots[index];
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedTime = time;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selectedTime == time
-                                  ? AppColors.secondaryColor
-                                  : Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                time,
-                                style: TextStyle(
-                                  color: selectedTime == time
-                                      ? Colors.white
-                                      : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          OrderTypeSelector(
+            orderType: orderType,
+            dateSlots: dateSlots,
+            timeSlots: timeSlots,
+            selectedDate: selectedDate,
+            selectedTime: selectedTime,
+            isDeliveryNowEnabled: isDeliveryNowEnabled,
+            isTodayEnabled: isTodayEnabled,
+            onOrderTypeChanged: (type) {
+              setState(() {
+                orderType = type;
+                if (orderType == 'Schedule Order') {
+                  generateDateSlots();
+                  listenToTimeSlots();
+                }
+              });
+            },
+            onDateSelected: (date) {
+              setState(() {
+                selectedDate = date;
+              });
+            },
+            onTimeSelected: (time) {
+              setState(() {
+                selectedTime = time;
+              });
+            },
           ),
           const SizedBox(height: 20),
-
-          // Bill Summary
-
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      isOrderSummaryExpanded = !isOrderSummaryExpanded;
-                    });
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Order Summary',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Icon(
-                        isOrderSummaryExpanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                AnimatedCrossFade(
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildBillRow('Subtotal', totalAmount),
-                      _buildBillRow('Delivery Fee', 25),
-                      _buildBillRow('Taxes & Charges', 10),
-                      _buildBillRow('Gift Packing Charge', 30),
-                      _buildBillRow(
-                        'Delivery Tips',
-                        deliveryTipAmount,
-                        onTapTip: () async {
-                          double? selectedTip = await showDialog(
-                            context: context,
-                            builder: (context) =>
-                                AddTipDialog(initialTip: deliveryTipAmount),
-                          );
-                          if (selectedTip != null) {
-                            setState(() {
-                              deliveryTipAmount = selectedTip;
-                            });
-                          }
-                        },
-                      ),
-                      const Divider(height: 24),
-                      _buildBillRow(
-                        'Total',
-                        totalAmount + 25 + 10 + deliveryTipAmount,
-                        isTotal: true,
-                      ),
-                    ],
-                  ),
-                  crossFadeState: isOrderSummaryExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 300),
-                ),
-              ],
-            ),
+          BillSummaryWidget(
+            isExpanded: isOrderSummaryExpanded,
+            totalAmount: totalAmount,
+            deliveryTipAmount: deliveryTipAmount,
+            onToggleExpansion: () {
+              setState(() {
+                isOrderSummaryExpanded = !isOrderSummaryExpanded;
+              });
+            },
+            onTipAdded: () {
+              showDialog(
+                context: context,
+                builder: (context) =>
+                    AddTipDialog(initialTip: deliveryTipAmount),
+              ).then((selectedTip) {
+                if (selectedTip != null) {
+                  setState(() {
+                    deliveryTipAmount = selectedTip;
+                  });
+                }
+              });
+            },
           ),
-
-          const SizedBox(height: 15), // Padding for bottom bar
+          const SizedBox(height: 15),
         ],
       ),
+      bottomNavigationBar: _buildCheckoutButton(),
+    );
+  }
 
-      // Bottom Checkout Button
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+  Widget _buildAddMoreProductsButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: SizedBox(
+        width: double.infinity,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            height: 40,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => MainPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 20, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text(
+                    'Add More',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              builder: (context) => CheckoutBottomSheet(
-                totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
-              ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.secondaryColor,
-            foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('Proceed to Checkout',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              Text('₹${totalAmount + 25 + 10 + deliveryTipAmount}',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildOrderTypeButton(String type) {
-    final isSelected = orderType == type;
-    return Expanded(
+  Widget _buildCouponSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                  color: AppColors.secondaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle),
+              child: const Icon(Icons.local_offer_outlined,
+                  color: AppColors.secondaryColor),
+            ),
+            title: const Text("Apply Coupon",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: IconButton(
+              icon: Icon(showCouponField
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down),
+              onPressed: () {
+                setState(() {
+                  showCouponField = !showCouponField;
+                });
+              },
+            ),
+          ),
+          if (showCouponField)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _couponController,
+                      decoration: InputDecoration(
+                        hintText: "Enter coupon code",
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                    ),
+                    child: const Text('Apply'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckoutButton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         onPressed: () {
-          setState(() {
-            orderType = type;
-            if (orderType == 'Pre Order') {
-              generateDateSlots();
-              fetchTimeSlots();
-            }
-          });
+          showModalBottomSheet(
+            context: context,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (context) => CheckoutBottomSheet(
+              totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
+            ),
+          );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              isSelected ? AppColors.secondaryColor : Colors.grey[200],
-          foregroundColor: isSelected ? Colors.white : Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          backgroundColor: AppColors.secondaryColor,
+          foregroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
-        child: Text(
-          type,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Proceed to Checkout',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            Text('₹${totalAmount + 25 + 10 + deliveryTipAmount}',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
         ),
       ),
     );
@@ -589,52 +321,62 @@ class _CartPageState extends State<CartPage> {
     return days[weekday - 1];
   }
 
-  void fetchTimeSlots() {
+  void listenToTimeSlots() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
     FirebaseFirestore.instance
-        .collection('own_shops_settings')
-        .doc('R4IElilPwlaujoKm7p9h')
+        .collection('cart')
+        .doc(userId)
         .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        List<dynamic> slots = snapshot.data()?['slotTiming'] ?? [];
-        setState(() {
-          timeSlots = slots.map((e) => e.toString()).toList();
+        .listen((cartSnapshot) async {
+      if (!cartSnapshot.exists) return;
+
+      final cartData = cartSnapshot.data();
+      if (cartData == null || cartData.isEmpty) return;
+
+      final firstEntry = cartData.values.first;
+
+      if (firstEntry is List && firstEntry.isNotEmpty) {
+        final firstProduct = firstEntry[0] as Map<String, dynamic>;
+        final shopId = firstProduct['shopid'];
+
+        if (shopId == null) return;
+
+        FirebaseFirestore.instance
+            .collection('own_shops_settings')
+            .doc(shopId)
+            .snapshots()
+            .listen((ownShopSnapshot) async {
+          if (ownShopSnapshot.exists) {
+            final shopData = ownShopSnapshot.data() as Map<String, dynamic>?;
+
+            if (shopData != null && shopData.containsKey('slotTiming')) {
+              final slots = shopData['slotTiming'] as List<dynamic>? ?? [];
+              setState(() {
+                timeSlots = slots.map((e) => e.toString()).toList();
+              });
+            }
+          } else {
+            FirebaseFirestore.instance
+                .collection('shops_settings')
+                .doc(shopId)
+                .snapshots()
+                .listen((shopSnapshot) {
+              if (shopSnapshot.exists) {
+                final shopData = shopSnapshot.data() as Map<String, dynamic>?;
+
+                if (shopData != null && shopData.containsKey('slotTiming')) {
+                  final slots = shopData['slotTiming'] as List<dynamic>? ?? [];
+                  setState(() {
+                    timeSlots = slots.map((e) => e.toString()).toList();
+                  });
+                }
+              }
+            });
+          }
         });
       }
     });
-  }
-
-  Widget _buildBillRow(
-    String label,
-    double amount, {
-    bool isTotal = false,
-    VoidCallback? onTapTip,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: isTotal ? Colors.black : Colors.grey[600],
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          GestureDetector(
-            onTap: onTapTip,
-            child: Text(
-              amount == 0 ? 'Add Tip' : '₹${amount.toInt()}',
-              style: TextStyle(
-                color: amount == 0 ? Colors.red : Colors.black,
-                fontWeight: amount == 0 ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> fetchCartItems() async {
@@ -730,6 +472,30 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
+  void startTimerForOrderType() {
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      final now = DateTime.now();
+      final currentHour = now.hour;
+
+      // Disable Delivery Now and Today between 9 PM and 6 AM
+      if (currentHour >= 21 || currentHour < 6) {
+        if (isDeliveryNowEnabled || isTodayEnabled) {
+          setState(() {
+            isDeliveryNowEnabled = false;
+            isTodayEnabled = false;
+          });
+        }
+      } else {
+        if (!isDeliveryNowEnabled || !isTodayEnabled) {
+          setState(() {
+            isDeliveryNowEnabled = true;
+            isTodayEnabled = true;
+          });
+        }
+      }
+    });
+  }
+
   void _showDeleteConfirmationDialog(int index) {
     showDialog(
       context: context,
@@ -777,17 +543,14 @@ class _CartPageState extends State<CartPage> {
               product['sku_id'] == productId &&
               product['variant_weight'] == variantWeight);
 
-          // Remove the key if list is empty
           if (productList.isEmpty) {
             updatedCartData.remove(skuKey);
           } else {
             updatedCartData[skuKey] = productList;
           }
 
-          // Update Firestore
           await cartRef.set(updatedCartData);
 
-          // Update local UI
           setState(() {
             cartItems.removeAt(index);
             totalAmount = cartItems.fold(
@@ -804,5 +567,11 @@ class _CartPageState extends State<CartPage> {
         const SnackBar(content: Text('Failed to delete item')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
 }

@@ -18,8 +18,14 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int totalItems = 0;
   double totalPrice = 0.0;
+  int _currentIndex = 0; // <-- Track the current selected tab
 
-  final Widget _homeScreen = HomeScreen();
+  final List<Widget> _screens = [
+    HomeScreen(),
+    CartPage(),
+    FavouritePage(),
+    SettingsPage(),
+  ];
 
   @override
   void initState() {
@@ -68,11 +74,27 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  void _navigateTo(BuildContext context, Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+  void _onNavItemTapped(int index) {
+    if (index == 0) {
+      setState(() {
+        _currentIndex = 0; // Home tab
+      });
+    } else if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CartPage()),
+      );
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => FavouritePage()),
+      );
+    } else if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SettingsPage()),
+      );
+    }
   }
 
   @override
@@ -83,14 +105,14 @@ class _MainPageState extends State<MainPage> {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            _homeScreen,
-            if (totalItems > 0)
+            _screens[_currentIndex], // <-- show selected screen
+            if (_currentIndex == 0 && totalItems > 0) // only on home screen
               Positioned(
-                bottom: 20,
+                bottom: 20, // move up slightly above bottom navbar
                 left: 20,
                 right: 20,
                 child: GestureDetector(
-                  onTap: () => _navigateTo(context, CartPage()),
+                  onTap: () => _onNavItemTapped(1), // Navigate to Cart tab
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     decoration: BoxDecoration(
@@ -157,23 +179,26 @@ class _MainPageState extends State<MainPage> {
               _buildNavItem(
                 icon: Icons.home_outlined,
                 label: 'Home',
-                selected: true,
-                onTap: () {},
+                selected: _currentIndex == 0,
+                onTap: () => _onNavItemTapped(0),
               ),
               _buildNavItem(
                 icon: Icons.shopping_cart_outlined,
                 label: 'Cart',
-                onTap: () => _navigateTo(context, CartPage()),
+                selected: _currentIndex == 1,
+                onTap: () => _onNavItemTapped(1),
               ),
               _buildNavItem(
                 icon: Icons.favorite_border,
                 label: 'Favourite',
-                onTap: () => _navigateTo(context, FavouritePage()),
+                selected: _currentIndex == 2,
+                onTap: () => _onNavItemTapped(2),
               ),
               _buildNavItem(
                 icon: Icons.settings_outlined,
                 label: 'Settings',
-                onTap: () => _navigateTo(context, SettingsPage()),
+                selected: _currentIndex == 3,
+                onTap: () => _onNavItemTapped(3),
               ),
             ],
           ),

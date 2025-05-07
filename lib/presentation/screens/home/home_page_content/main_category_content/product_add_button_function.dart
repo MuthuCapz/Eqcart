@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'other_shop_product_add_dialog.dart';
+
 class AddToCartButtons extends StatefulWidget {
   final String userId;
   final String productId;
@@ -9,6 +11,7 @@ class AddToCartButtons extends StatefulWidget {
   final String imageUrl;
   final String variantKey; // Variant weight, such as '500g', '1kg'
   final String variantWeight; // Variant's specific weight (volume)
+  final String shopId;
   final VoidCallback onCartUpdated;
 
   const AddToCartButtons({
@@ -18,7 +21,8 @@ class AddToCartButtons extends StatefulWidget {
     required this.price,
     required this.imageUrl,
     required this.variantKey,
-    required this.variantWeight, // New variant weight
+    required this.variantWeight,
+    required this.shopId,
     required this.onCartUpdated,
     Key? key,
   }) : super(key: key);
@@ -95,6 +99,7 @@ class _AddToCartButtonsState extends State<AddToCartButtons> {
         'product_name': widget.productName,
         'price': widget.price,
         'quantity': qty,
+        'shopid': widget.shopId,
         'image_url': widget.imageUrl,
         variantKeyName: variantKeyValue,
       };
@@ -138,11 +143,46 @@ class _AddToCartButtonsState extends State<AddToCartButtons> {
 
     return quantity == 0
         ? ElevatedButton(
-            onPressed: () {
-              setState(() {
-                quantity = 1;
-              });
-              _updateFirestoreCart(1);
+            onPressed: () async {
+              final cartRef = FirebaseFirestore.instance
+                  .collection('cart')
+                  .doc(widget.userId);
+              final docSnap = await cartRef.get();
+              Map<String, dynamic> currentData =
+                  Map<String, dynamic>.from(docSnap.data() ?? {});
+
+              bool isDifferentShop = false;
+
+              for (var entry in currentData.entries) {
+                List<dynamic> productVariants = entry.value as List<dynamic>;
+                for (var variant in productVariants) {
+                  if (variant['shopid'] != widget.shopId) {
+                    isDifferentShop = true;
+                    break;
+                  }
+                }
+                if (isDifferentShop) break;
+              }
+
+              if (isDifferentShop) {
+                bool? confirm = await showConfirmClearCartDialog(context);
+
+                if (confirm == true) {
+                  // User chose to proceed: clear cart and add new product
+                  await cartRef.set({});
+                  setState(() {
+                    quantity = 1;
+                  });
+                  _updateFirestoreCart(1);
+                }
+                // else: Do nothing if cancelled
+              } else {
+                // Same shop or empty cart
+                setState(() {
+                  quantity = 1;
+                });
+                _updateFirestoreCart(1);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
