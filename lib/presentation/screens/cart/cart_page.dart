@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:eqcart/presentation/screens/cart/utils/date_time_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -269,6 +270,32 @@ class _CartPageState extends State<CartPage> {
       ),
       child: ElevatedButton(
         onPressed: () {
+          if (orderType == 'Schedule Order') {
+            final bool isTodaySelected = selectedDate == 'Today';
+            final bool isTodayDisabled = DateTimeUtils.isDeliveryNowDisabled();
+            final bool isInvalid = selectedDate.isEmpty ||
+                selectedTime.isEmpty ||
+                (isTodaySelected && isTodayDisabled);
+
+            if (isInvalid) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content:
+                        Text('Please select a valid delivery date and time.')),
+              );
+              return; // don't proceed
+            }
+          } else if (orderType == 'Delivery Now') {
+            if (DateTimeUtils.isDeliveryNowDisabled()) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text(
+                        'Delivery is not available right now. Please schedule your order.')),
+              );
+              return; // don't proceed
+            }
+          }
+
           showModalBottomSheet(
             context: context,
             shape: const RoundedRectangleBorder(

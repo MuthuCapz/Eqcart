@@ -1,3 +1,4 @@
+import 'package:eqcart/presentation/screens/cart/utils/date_time_utils.dart';
 import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
 
@@ -28,9 +29,7 @@ class OrderTypeSelector extends StatelessWidget {
   });
 
   bool _isDeliveryNowDisabled() {
-    final now = DateTime.now();
-    final hour = now.hour;
-    return (hour >= 15 || hour < 6); // 9PM to 6AM
+    return DateTimeUtils.isDeliveryNowDisabled();
   }
 
   @override

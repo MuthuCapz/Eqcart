@@ -33,8 +33,8 @@ Future<bool?> showConfirmClearCartDialog(BuildContext context) {
                   ),
                   padding: const EdgeInsets.all(16),
                   child: const Icon(
-                    Icons.warning_amber_rounded,
-                    size: 50,
+                    Icons.add_shopping_cart_outlined,
+                    size: 45,
                     color: AppColors.primaryColor,
                   ),
                 ),
