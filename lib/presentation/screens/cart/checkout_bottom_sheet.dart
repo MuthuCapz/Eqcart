@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
+import '../home/main_page.dart';
 import 'checkout_functions.dart';
 
 class CheckoutBottomSheet extends StatefulWidget {
   final double totalAmount;
+  final Map<String, dynamic> deliveryDetails;
 
-  const CheckoutBottomSheet({Key? key, required this.totalAmount})
-      : super(key: key);
+  const CheckoutBottomSheet({
+    Key? key,
+    required this.totalAmount,
+    required this.deliveryDetails,
+  }) : super(key: key);
 
   @override
   State<CheckoutBottomSheet> createState() => _CheckoutBottomSheetState();
@@ -23,6 +28,7 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
     paymentService = PaymentService(
       context: context,
       orderTotalAmount: widget.totalAmount,
+      deliveryDetails: widget.deliveryDetails,
       onOrderCompleted: () {
         Navigator.pushReplacement(
           context,
@@ -252,7 +258,10 @@ class OrderSuccessPage extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
               ),
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => MainPage()),
+                );
               },
               child: const Text(
                 'Continue Shopping',

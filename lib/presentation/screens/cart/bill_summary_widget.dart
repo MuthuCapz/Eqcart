@@ -37,10 +37,23 @@ class BillSummaryWidget extends StatelessWidget {
                   'Order Summary',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
+                Row(
+                  children: [
+                    Text(
+                      '₹${totalAmount.toInt()}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryColor, // Or any highlight color
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                    ),
+                  ],
                 ),
               ],
             ),

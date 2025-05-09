@@ -3,10 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
+import 'order_service.dart';
+
 class PaymentService {
   late Razorpay _razorpay;
   final BuildContext context;
   final double orderTotalAmount;
+  final Map<String, dynamic> deliveryDetails;
   final Function onOrderCompleted;
 
   double _walletBalance = 0.0;
@@ -15,6 +18,7 @@ class PaymentService {
   PaymentService({
     required this.context,
     required this.orderTotalAmount,
+    required this.deliveryDetails,
     required this.onOrderCompleted,
   });
 
@@ -68,6 +72,25 @@ class PaymentService {
 
   void _handlePaymentError(PaymentFailureResponse response) async {
     showMessage('Payment Failed: ${response.message}');
+
+    await OrderService.createOrder(
+      orderTotal: orderTotalAmount,
+      paymentStatus: 'failure',
+      paymentMethod: 'Razorpay',
+      deliveryDetails: deliveryDetails,
+      shippingAddress: {
+        'name': 'John Doe',
+        'street': '123 Main Street',
+        'city': 'New York',
+        'state': 'NY',
+        'pincode': '10001',
+        'phone': '1234567890',
+      },
+      couponCode: 'SUMMER10',
+      deliveryTip: 10,
+    );
+
+    onOrderCompleted();
     if (_walletDeducted) {
       // Payment failed, refund back to wallet
       await refundWallet(_walletBalance);
