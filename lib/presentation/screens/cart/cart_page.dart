@@ -8,6 +8,7 @@ import '../../../utils/colors.dart';
 
 import '../home/main_page.dart';
 import 'add_tip_dialog.dart';
+import 'address_showing_widget.dart';
 import 'checkout_bottom_sheet.dart';
 import 'cart_item_widget.dart';
 import 'order_type_selector.dart';
@@ -113,65 +114,7 @@ class _CartPageState extends State<CartPage> {
             },
           ),
           const SizedBox(height: 20),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(userId)
-                .collection('addresses')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Text('No addresses found.');
-              }
-
-              String? address;
-
-              for (var doc in snapshot.data!.docs) {
-                final data = doc.data() as Map<String, dynamic>;
-
-                // First check map_location
-                if (data['map_location'] != null &&
-                    data['map_location']['isDefault'] == true) {
-                  address = data['map_location']['address'];
-                  break;
-                }
-                // Then check manual_location (in case needed in future)
-                else if (data['manual_location'] != null &&
-                    data['manual_location']['isDefault'] == true) {
-                  if (data['manual_location']['address'] != null) {
-                    address = data['manual_location']['address'];
-                    break;
-                  }
-                }
-              }
-
-              if (address == null) {
-                return const Text('No default address set.');
-              }
-              return Card(
-                color: Colors.white, // Set background color to white
-                margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(1), // Rounded corners
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(2),
-                  child: ListTile(
-                    leading: const Icon(Icons.location_on,
-                        color: AppColors.secondaryColor),
-                    title: Text(
-                      address,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          DefaultAddressWidget(userId: userId),
 
           const SizedBox(height: 20),
           BillSummaryWidget(
