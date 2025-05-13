@@ -1,15 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
+import '../map/location_screen.dart';
+import 'address_selection_functions.dart'; // <- Import functions
 
 class AddressSelectionBottomSheet extends StatefulWidget {
   final String userId;
   final String? initialSelectedAddressId;
+  final String? shopId;
 
   const AddressSelectionBottomSheet({
     Key? key,
     required this.userId,
     this.initialSelectedAddressId,
+    this.shopId,
   }) : super(key: key);
 
   @override
@@ -20,6 +24,7 @@ class AddressSelectionBottomSheet extends StatefulWidget {
 class _AddressSelectionBottomSheetState
     extends State<AddressSelectionBottomSheet> {
   String? selectedAddressId;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -72,8 +77,7 @@ class _AddressSelectionBottomSheetState
 
                 return ListView.builder(
                   shrinkWrap: true,
-                  physics:
-                      const NeverScrollableScrollPhysics(), // Important for bottomsheet scrolling
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
                     final doc = snapshot.data!.docs[index];
@@ -95,7 +99,7 @@ class _AddressSelectionBottomSheetState
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.secondaryColor.withOpacity(0.15)
-                            : Colors.white, // Pure white for unselected
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
@@ -138,10 +142,15 @@ class _AddressSelectionBottomSheetState
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: selectedAddressId != null
-                  ? () {
-                      Navigator.pop(context, selectedAddressId);
-                    }
+              onPressed: selectedAddressId != null && !isLoading
+                  ? () => handleAddressSelectionAndContinue(
+                        context: context,
+                        userId: widget.userId,
+                        selectedAddressId: selectedAddressId!,
+                        shopId: widget.shopId,
+                        onLoadingStart: () => setState(() => isLoading = true),
+                        onLoadingEnd: () => setState(() => isLoading = false),
+                      )
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryColor,
@@ -150,11 +159,20 @@ class _AddressSelectionBottomSheetState
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Continue',
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                      ),
+                    )
+                  : const Text(
+                      'Continue',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
             ),
             const SizedBox(height: 12),
             const Row(
@@ -170,8 +188,11 @@ class _AddressSelectionBottomSheetState
             const SizedBox(height: 12),
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
-                // Navigate to Add New Address Page (implement navigation as needed)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const LocationScreen()),
+                );
               },
               child: const Text(
                 'Add New Address',
