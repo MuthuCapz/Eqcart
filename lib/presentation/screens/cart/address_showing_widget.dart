@@ -4,18 +4,32 @@ import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
 import 'address_selection_bottom_sheet.dart';
 
-class DefaultAddressWidget extends StatelessWidget {
+class DefaultAddressWidget extends StatefulWidget {
   final String userId;
+  final Function(String) onAddressSelected;
 
-  const DefaultAddressWidget({Key? key, required this.userId})
-      : super(key: key);
+  const DefaultAddressWidget({
+    Key? key,
+    required this.userId,
+    required this.onAddressSelected,
+  }) : super(key: key);
+
+  @override
+  State<DefaultAddressWidget> createState() => _DefaultAddressWidgetState();
+}
+
+class _DefaultAddressWidgetState extends State<DefaultAddressWidget> {
+  String? lastAddress;
+  String? cachedAddress;
 
   Stream<Map<String, dynamic>> _combinedStream() {
-    final cartStream =
-        FirebaseFirestore.instance.collection('cart').doc(userId).snapshots();
+    final cartStream = FirebaseFirestore.instance
+        .collection('cart')
+        .doc(widget.userId)
+        .snapshots();
     final addressStream = FirebaseFirestore.instance
         .collection('users')
-        .doc(userId)
+        .doc(widget.userId)
         .collection('addresses')
         .snapshots();
 
@@ -23,7 +37,6 @@ class DefaultAddressWidget extends StatelessWidget {
       cartStream,
       addressStream,
       (DocumentSnapshot cartSnap, QuerySnapshot addressSnap) {
-        // Process cart
         String? shopId;
         if (cartSnap.exists) {
           final cartData = cartSnap.data() as Map<String, dynamic>? ?? {};
@@ -36,7 +49,6 @@ class DefaultAddressWidget extends StatelessWidget {
           }
         }
 
-        // Process address
         String? address;
         String? defaultAddressId;
 
@@ -70,18 +82,19 @@ class DefaultAddressWidget extends StatelessWidget {
     return StreamBuilder<Map<String, dynamic>>(
       stream: _combinedStream(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+        final hasData = snapshot.hasData && snapshot.data?['address'] != null;
+        final address =
+            hasData ? snapshot.data!['address'] as String : cachedAddress;
+        final shopId = snapshot.data?['shopId'] as String?;
+        final defaultAddressId = snapshot.data?['defaultAddressId'] as String?;
 
-        if (!snapshot.hasData) {
-          return const Text('No address found.');
+        if (hasData && address != lastAddress) {
+          lastAddress = address;
+          cachedAddress = address;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            widget.onAddressSelected(address!);
+          });
         }
-
-        final data = snapshot.data!;
-        final shopId = data['shopId'] as String?;
-        final address = data['address'] as String?;
-        final defaultAddressId = data['defaultAddressId'] as String?;
 
         if (address == null) {
           return const Text('No default address set.');
@@ -129,7 +142,7 @@ class DefaultAddressWidget extends StatelessWidget {
                           ),
                         ),
                         builder: (context) => AddressSelectionBottomSheet(
-                          userId: userId,
+                          userId: widget.userId,
                           initialSelectedAddressId: defaultAddressId,
                           shopId: shopId,
                         ),

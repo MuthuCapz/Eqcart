@@ -11,6 +11,7 @@ class PaymentService {
   final double orderTotalAmount;
   final Map<String, dynamic> deliveryDetails;
   final Function onOrderCompleted;
+  final String? selectedAddress;
 
   double _walletBalance = 0.0;
   bool _walletDeducted = false;
@@ -20,6 +21,7 @@ class PaymentService {
     required this.orderTotalAmount,
     required this.deliveryDetails,
     required this.onOrderCompleted,
+    required this.selectedAddress,
   });
 
   void init() {
@@ -78,14 +80,7 @@ class PaymentService {
       paymentStatus: 'failure',
       paymentMethod: 'Razorpay',
       deliveryDetails: deliveryDetails,
-      shippingAddress: {
-        'name': 'John Doe',
-        'street': '123 Main Street',
-        'city': 'New York',
-        'state': 'NY',
-        'pincode': '10001',
-        'phone': '1234567890',
-      },
+      shippingAddress: selectedAddress ?? 'N/A',
       couponCode: 'SUMMER10',
       deliveryTip: 10,
     );

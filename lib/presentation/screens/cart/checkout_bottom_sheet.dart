@@ -6,11 +6,13 @@ import 'checkout_functions.dart';
 class CheckoutBottomSheet extends StatefulWidget {
   final double totalAmount;
   final Map<String, dynamic> deliveryDetails;
+  final String? selectedAddress;
 
   const CheckoutBottomSheet({
     Key? key,
     required this.totalAmount,
     required this.deliveryDetails,
+    required this.selectedAddress,
   }) : super(key: key);
 
   @override
@@ -35,6 +37,7 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
           MaterialPageRoute(builder: (context) => const OrderSuccessPage()),
         );
       },
+      selectedAddress: widget.selectedAddress,
     );
     paymentService.init();
     fetchWalletBalance();

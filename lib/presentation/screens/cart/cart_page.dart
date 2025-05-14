@@ -36,6 +36,7 @@ class _CartPageState extends State<CartPage> {
   late Timer _timer;
   bool isDeliveryNowEnabled = true;
   bool isTodayEnabled = true;
+  String? selectedAddress;
 
   String userId = FirebaseAuth.instance.currentUser!.uid;
 
@@ -114,7 +115,14 @@ class _CartPageState extends State<CartPage> {
             },
           ),
           const SizedBox(height: 20),
-          DefaultAddressWidget(userId: userId),
+          DefaultAddressWidget(
+            userId: userId,
+            onAddressSelected: (address) {
+              setState(() {
+                selectedAddress = address;
+              });
+            },
+          ),
 
           const SizedBox(height: 20),
           BillSummaryWidget(
@@ -317,8 +325,10 @@ class _CartPageState extends State<CartPage> {
             builder: (context) => CheckoutBottomSheet(
               totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
               deliveryDetails: deliveryDetails,
+              selectedAddress: selectedAddress,
             ),
           );
+          print("Selected Address: $selectedAddress");
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.secondaryColor,

@@ -6,7 +6,7 @@ class OrderService {
     required double orderTotal,
     required String paymentStatus,
     required String paymentMethod,
-    required Map<String, dynamic> shippingAddress,
+    required String shippingAddress,
     required Map<String, dynamic> deliveryDetails,
     String couponCode = '',
     double deliveryTip = 0,
