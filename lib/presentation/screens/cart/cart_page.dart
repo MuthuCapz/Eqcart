@@ -86,35 +86,43 @@ class _CartPageState extends State<CartPage> {
           ),
 
           const SizedBox(height: 20),
-          OrderTypeSelector(
-            orderType: orderType,
-            dateSlots: dateSlots,
-            timeSlots: timeSlots,
-            selectedDate: selectedDate,
-            selectedTime: selectedTime,
-            isDeliveryNowEnabled: isDeliveryNowEnabled,
-            isTodayEnabled: isTodayEnabled,
-            onOrderTypeChanged: (type) {
-              setState(() {
-                orderType = type;
-                if (orderType == 'Schedule Order') {
-                  generateDateSlots();
-                  listenToTimeSlots();
-                }
-              });
-            },
-            onDateSelected: (date) {
-              setState(() {
-                selectedDate = date;
-              });
-            },
-            onTimeSelected: (time) {
-              setState(() {
-                selectedTime = time;
-              });
+          StreamBuilder<bool>(
+            stream: DateTimeUtils.isDeliveryNowDisabledStream(),
+            builder: (context, snapshot) {
+              final isDeliveryNowDisabled = snapshot.data ?? false;
+
+              return OrderTypeSelector(
+                orderType: orderType,
+                dateSlots: dateSlots,
+                timeSlots: timeSlots,
+                selectedDate: selectedDate,
+                selectedTime: selectedTime,
+                isDeliveryNowEnabled: !isDeliveryNowDisabled,
+                isTodayEnabled: !isDeliveryNowDisabled,
+                onOrderTypeChanged: (type) {
+                  setState(() {
+                    orderType = type;
+                    if (orderType == 'Schedule Order') {
+                      generateDateSlots();
+                      listenToTimeSlots();
+                    }
+                  });
+                },
+                onDateSelected: (date) {
+                  setState(() {
+                    selectedDate = date;
+                  });
+                },
+                onTimeSelected: (time) {
+                  setState(() {
+                    selectedTime = time;
+                  });
+                },
+              );
             },
           ),
           const SizedBox(height: 20),
+
           DefaultAddressWidget(
             userId: userId,
             onAddressSelected: (address) {
@@ -283,32 +291,37 @@ class _CartPageState extends State<CartPage> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: () async {
+          final bool isDisabledNow =
+              await DateTimeUtils.isDeliveryNowDisabledStream().first;
+
           if (orderType == 'Schedule Order') {
             final bool isTodaySelected = selectedDate == 'Today';
-            final bool isTodayDisabled = DateTimeUtils.isDeliveryNowDisabled();
             final bool isInvalid = selectedDate.isEmpty ||
                 selectedTime.isEmpty ||
-                (isTodaySelected && isTodayDisabled);
+                (isTodaySelected && isDisabledNow);
 
             if (isInvalid) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content:
-                        Text('Please select a valid delivery date and time.')),
+                  content:
+                      Text('Please select a valid delivery date and time.'),
+                ),
               );
-              return; // don't proceed
+              return; // Don't proceed
             }
           } else if (orderType == 'Delivery Now') {
-            if (DateTimeUtils.isDeliveryNowDisabled()) {
+            if (isDisabledNow) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text(
-                        'Delivery is not available right now. Please schedule your order.')),
+                  content: Text(
+                      'Delivery is not available right now. Please schedule your order.'),
+                ),
               );
-              return; // don't proceed
+              return; // Don't proceed
             }
           }
+
           final deliveryDetails = {
             'orderType': orderType,
             if (orderType == 'Schedule Order') ...{
@@ -328,6 +341,7 @@ class _CartPageState extends State<CartPage> {
               selectedAddress: selectedAddress,
             ),
           );
+
           print("Selected Address: $selectedAddress");
         },
         style: ElevatedButton.styleFrom(

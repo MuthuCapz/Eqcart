@@ -28,13 +28,9 @@ class OrderTypeSelector extends StatelessWidget {
     required this.isTodayEnabled,
   });
 
-  bool _isDeliveryNowDisabled() {
-    return DateTimeUtils.isDeliveryNowDisabled();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDeliveryNowDisabled = _isDeliveryNowDisabled();
+    final isDeliveryNowDisabled = !isDeliveryNowEnabled;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -125,7 +121,7 @@ class OrderTypeSelector extends StatelessWidget {
                   final time = timeSlots[index];
                   final isTodaySelected = selectedDate == 'Today';
                   final isTodayDisabled =
-                      isTodaySelected && _isDeliveryNowDisabled();
+                      isTodaySelected && isDeliveryNowDisabled;
 
                   final isDisabled = isTodayDisabled;
                   return GestureDetector(

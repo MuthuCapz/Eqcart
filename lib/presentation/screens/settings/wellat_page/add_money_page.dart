@@ -1,4 +1,4 @@
-import 'package:eqcart/presentation/screens/settings/wallet_service.dart';
+import 'package:eqcart/presentation/screens/settings/wellat_page/wallet_service.dart';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 

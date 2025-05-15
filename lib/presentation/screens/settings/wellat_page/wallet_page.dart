@@ -1,8 +1,8 @@
-import 'package:eqcart/presentation/screens/settings/wallet_service.dart';
+import 'package:eqcart/presentation/screens/settings/wellat_page/wallet_service.dart';
 import 'package:flutter/material.dart';
 
 import 'add_money_page.dart';
-import '../../../utils/colors.dart';
+import '../../../../utils/colors.dart';
 
 class WalletPage extends StatelessWidget {
   @override
