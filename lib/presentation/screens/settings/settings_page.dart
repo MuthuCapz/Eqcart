@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
 import 'addresses_page/address_page.dart';
+import 'help_center/help_center_page.dart';
 import 'wellat_page/wallet_page.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -34,6 +35,25 @@ class SettingsPage extends StatelessWidget {
       title: 'Delete Account',
       onTap: (context) {
         // TODO: Confirm and delete account
+      },
+    ),
+    _SettingItem(
+      icon: Icons.help_outline,
+      iconBg: Color(0xFFE9E5FF),
+      title: 'Help Center',
+      onTap: (context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => HelpCenterPage()),
+        );
+      },
+    ),
+    _SettingItem(
+      icon: Icons.feedback_outlined,
+      iconBg: Color(0xFFFFE7B3),
+      title: 'Feedback and Complaint',
+      onTap: (context) {
+        // TODO: Navigate to Feedback page
       },
     ),
     _SettingItem(

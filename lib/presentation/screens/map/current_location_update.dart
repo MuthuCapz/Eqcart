@@ -399,4 +399,19 @@ class LocationProvider with ChangeNotifier {
     manualAddress = address;
     notifyListeners();
   }
+
+  LatLng? _pickedLocation;
+
+  LatLng? get pickedLocation => _pickedLocation;
+  void setInitialLocation(
+      {required double latitude, required double longitude}) {
+    _pickedLocation = LatLng(latitude, longitude);
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 }

@@ -6,16 +6,59 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'current_location_update.dart';
 
 class GoogleMapScreen extends StatefulWidget {
+  final String? userId;
+  final String? addressId;
+  final Map<String, dynamic>? addressData;
+  final double? initialLat;
+  final double? initialLng;
+  final bool isEditMode;
+  final String? preSelectedLabel;
+
+  const GoogleMapScreen({
+    super.key,
+    this.userId,
+    this.addressId,
+    this.addressData,
+    this.initialLat,
+    this.initialLng,
+    this.isEditMode = false,
+    this.preSelectedLabel,
+  });
+
   @override
   _GoogleMapScreenState createState() => _GoogleMapScreenState();
 }
 
 class _GoogleMapScreenState extends State<GoogleMapScreen> {
+  late final LocationProvider locationProvider;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<LocationProvider>(context, listen: false).getUserLocation();
+      final locationProvider =
+          Provider.of<LocationProvider>(context, listen: false);
+
+      if (widget.initialLat != null && widget.initialLng != null) {
+        locationProvider.setInitialLocation(
+          latitude: widget.initialLat!,
+          longitude: widget.initialLng!,
+        );
+      } else if (widget.addressData != null) {
+        final manual = widget.addressData!['manual_location'];
+        final map = widget.addressData!['map_location'];
+        final lat = map?['latitude'] ?? manual?['latitude'];
+        final lng = map?['longitude'] ?? manual?['longitude'];
+
+        if (lat != null && lng != null) {
+          locationProvider.setInitialLocation(
+            latitude: lat,
+            longitude: lng,
+          );
+        }
+      } else {
+        locationProvider.getUserLocation();
+      }
     });
   }
 
