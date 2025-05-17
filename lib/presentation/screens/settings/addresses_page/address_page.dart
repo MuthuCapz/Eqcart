@@ -147,35 +147,46 @@ class AddressPage extends StatelessWidget {
                               Row(
                                 children: [
                                   IconButton(
-                                    onPressed: () {
+                                    onPressed: () async {
+                                      final data =
+                                          doc.data() as Map<String, dynamic>;
+                                      final manual =
+                                          data['manual_location'] ?? {};
+                                      final map = data['map_location'] ?? {};
+
+                                      // Get the coordinates - prioritize map location over manual
                                       final lat =
                                           map['latitude'] ?? manual['latitude'];
                                       final lng = map['longitude'] ??
                                           manual['longitude'];
+                                      final address = map['address'] ??
+                                          manual['address'] ??
+                                          '';
 
-                                      if (lat != null && lng != null) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => GoogleMapScreen(
-                                              userId: userId,
-                                              addressId: doc.id,
-                                              addressData: data,
-                                              initialLat: data['map_location']
-                                                  ?['latitude'],
-                                              initialLng: data['map_location']
-                                                  ?['longitude'],
-                                              isEditMode: true,
-                                              preSelectedLabel: data[
-                                                  'label'], // <-- Important
-                                            ),
-                                          ),
-                                        );
-                                      } else {
+                                      if (lat == null || lng == null) {
                                         Fluttertoast.showToast(
                                             msg:
-                                                "No coordinates found for this address.");
+                                                "Location data missing for this address");
+                                        return;
                                       }
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => GoogleMapScreen(
+                                            userId: userId,
+                                            addressId: doc.id,
+                                            addressData: {
+                                              'latitude': lat,
+                                              'longitude': lng,
+                                              'address': address,
+                                              'label': doc
+                                                  .id, // The document ID is the label (Home/Office/Other)
+                                            },
+                                            isEditMode: true,
+                                          ),
+                                        ),
+                                      );
                                     },
                                     icon: Icon(Icons.edit_outlined,
                                         color: AppColors.secondaryColor),
