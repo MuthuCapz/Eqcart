@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
+import 'Delete_account/delete_account_page.dart';
 import 'addresses_page/address_page.dart';
 import 'help_center/help_center_page.dart';
 import 'wellat_page/wallet_page.dart';
@@ -34,7 +35,10 @@ class SettingsPage extends StatelessWidget {
       iconBg: Color(0xFFF8D7DA),
       title: 'Delete Account',
       onTap: (context) {
-        // TODO: Confirm and delete account
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DeleteAccountPage()),
+        );
       },
     ),
     _SettingItem(
