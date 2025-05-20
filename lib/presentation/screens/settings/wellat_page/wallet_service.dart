@@ -8,7 +8,7 @@ class WalletService {
   static Stream<double> walletBalanceStream() {
     final userId = _auth.currentUser!.uid;
     return _firestore
-        .collection('users')
+        .collection('users_wallets')
         .doc(userId)
         .collection('wallet')
         .doc('walletData')
@@ -25,7 +25,7 @@ class WalletService {
   static Future<void> updateBalance(double amount) async {
     final userId = _auth.currentUser!.uid;
     final walletRef = _firestore
-        .collection('users')
+        .collection('users_wallets')
         .doc(userId)
         .collection('wallet')
         .doc('walletData');

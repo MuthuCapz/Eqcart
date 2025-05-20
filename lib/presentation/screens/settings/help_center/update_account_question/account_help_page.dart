@@ -8,6 +8,7 @@ class AccountHelpPage extends StatelessWidget {
   static const accountOptions = [
     'Change contact details',
     'Deactivate my account',
+    'Delete My Account',
     'Add new address',
     'It\'s something else',
   ];

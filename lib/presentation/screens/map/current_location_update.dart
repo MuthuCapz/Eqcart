@@ -17,92 +17,45 @@ class LocationProvider with ChangeNotifier {
   String addressLabel = "Home"; // Default label
   TextEditingController searchController = TextEditingController();
   List<Location> searchResults = [];
-  GoogleMapController? mapController;
+
   LocationProvider() {
     getUserLocation();
   }
-  bool isLoading = false;
-  bool _isInEditMode = false;
-  Future<void> initializeForEdit(
-      Map<String, dynamic> addressData, bool isEditMode, String label) async {
-    _isInEditMode = isEditMode;
-    isLoading = true;
-    notifyListeners();
 
-    // Set the label first
-    addressLabel = label;
+  Future<void> getUserLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+      return;
+    }
 
-    if (addressData['latitude'] != null && addressData['longitude'] != null) {
-      final latLng = LatLng(addressData['latitude'], addressData['longitude']);
-
-      // Don't update currentPosition in edit mode
-      selectedLatLng = latLng;
-
-      markers.clear();
-      markers.add(Marker(
-        markerId: const MarkerId("selected"),
-        position: latLng,
-      ));
-
-      // Set the address from the passed data first
-      selectedAddress = addressData['address'];
-      manualAddress = addressData['address'];
-
-      // Then try to get more precise address from coordinates
-      await _updateAddress(latLng);
-
-      if (mapController != null) {
-        mapController!.animateCamera(
-          CameraUpdate.newLatLngZoom(latLng, 14),
-        );
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return;
       }
     }
 
-    isLoading = false;
-    notifyListeners();
-  }
-
-  Future<void> getUserLocation() async {
-    isLoading = true;
-    notifyListeners();
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        await Geolocator.openLocationSettings();
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        return;
-      }
-
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
-
       currentPosition = LatLng(position.latitude, position.longitude);
-      selectedLatLng = currentPosition;
 
       markers.clear();
       markers.add(Marker(
-        markerId: const MarkerId("current"),
+        markerId: MarkerId("current"),
         position: currentPosition!,
       ));
 
       await _updateAddress(currentPosition!);
-    } catch (e) {
-      print("Error getting location: $e");
-    } finally {
-      isLoading = false;
       notifyListeners();
+    } catch (e) {
+      print("Error fetching location: $e");
     }
   }
 
@@ -155,62 +108,44 @@ class LocationProvider with ChangeNotifier {
     return null;
   }
 
-  void setMapController(GoogleMapController controller) {
-    mapController = controller;
-  }
+  void setMapController(GoogleMapController controller) {}
 
   void onMapTapped(LatLng position) {
-    if (_isInEditMode) {
-      // Only update selectedLatLng in edit mode, not currentPosition
-      selectedLatLng = position;
-      markers.clear();
-      markers.add(Marker(
-        markerId: const MarkerId("selected"),
-        position: position,
-      ));
-      _updateAddress(position);
-    } else {
-      // Normal behavior when not in edit mode
-      currentPosition = position;
-      selectedLatLng = position;
-      markers.clear();
-      markers.add(Marker(
-        markerId: const MarkerId("selected"),
-        position: position,
-      ));
-      _updateAddress(position);
-    }
-  }
-
-  void disposeResources() {
-    searchController.dispose();
-    // Add any other cleanup needed for map controllers, etc.
-    if (mapController != null) {
-      mapController!.dispose();
-      mapController = null;
-    }
+    currentPosition = position;
+    selectedLatLng = position;
+    markers.clear();
+    markers.add(Marker(
+      markerId: MarkerId("selected"),
+      position: position,
+    ));
+    _updateAddress(position);
+    notifyListeners();
   }
 
   Future<void> _updateAddress(LatLng position) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        selectedAddress = [
-          place.street,
-          place.subLocality,
-          place.locality,
-          place.administrativeArea,
-          place.postalCode,
-          place.country
-        ].where((part) => part != null && part.isNotEmpty).join(', ');
+
+        // Avoid duplicate values
+        String name = place.name ?? "";
+        String street = place.street ?? "";
+
+        if (name == street) {
+          name = ""; // Remove duplicate entry
+        }
+
+        selectedAddress =
+            "${name.isNotEmpty ? "$name, " : ""}${street.isNotEmpty ? "$street, " : ""}"
+            "${place.subLocality}, ${place.locality}, ${place.administrativeArea} "
+            "${place.postalCode}, ${place.country}";
+      } else {
+        selectedAddress = "Unknown location";
       }
     } catch (e) {
-      print("Error updating address: $e");
       selectedAddress = "Address not found";
     }
     notifyListeners();
@@ -407,7 +342,7 @@ class LocationProvider with ChangeNotifier {
     // Get all existing address documents
     final snapshot = await addressRef.get();
 
-    // Ensure `isDefault` is false for all address types first
+    // Ensure isDefault is false for all address types first
     for (var doc in snapshot.docs) {
       batch.update(addressRef.doc(doc.id), {
         "map_location.isDefault": false,
@@ -463,25 +398,5 @@ class LocationProvider with ChangeNotifier {
   void setManualAddress(String address) {
     manualAddress = address;
     notifyListeners();
-  }
-
-  LatLng? _pickedLocation;
-
-  LatLng? get pickedLocation => _pickedLocation;
-  void setInitialLocation(
-      {required double latitude, required double longitude}) {
-    _pickedLocation = LatLng(latitude, longitude);
-    notifyListeners();
-  }
-
-  void setSelectedLatLng(LatLng latLng) {
-    selectedLatLng = latLng;
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
   }
 }

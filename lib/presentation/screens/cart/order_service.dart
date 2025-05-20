@@ -14,7 +14,7 @@ class OrderService {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-    //  Fetch cart products
+    // 1. Fetch Cart
     DocumentSnapshot<Map<String, dynamic>> cartSnapshot =
         await firestore.collection('cart').doc(uid).get();
 
@@ -23,12 +23,10 @@ class OrderService {
     }
 
     Map<String, dynamic> cartData = cartSnapshot.data()!;
-
     List<Map<String, dynamic>> cartItems = [];
 
     cartData.forEach((skuId, value) {
-      var itemData =
-          value[0]; // because inside each SKU, it's an array with 0th item
+      var itemData = value[0]; // array with 0th item
       cartItems.add({
         'productId': skuId,
         'productName': itemData['product_name'],
@@ -40,11 +38,36 @@ class OrderService {
       });
     });
 
-    //   Create Order
-    DocumentReference orderRef =
-        firestore.collection('orders').doc(); // Auto-ID
+    // 2. Generate Custom Order ID
+    DocumentReference counterRef =
+        firestore.collection('counters').doc('orders');
+    int orderNumber = await firestore.runTransaction<int>((transaction) async {
+      DocumentSnapshot counterSnap = await transaction.get(counterRef);
+
+      int newOrderNumber;
+      if (!counterSnap.exists) {
+        newOrderNumber = 1000001;
+        transaction.set(counterRef, {'lastOrderNumber': newOrderNumber});
+      } else {
+        int current = counterSnap['lastOrderNumber'];
+        newOrderNumber = current + 1;
+        transaction.update(counterRef, {'lastOrderNumber': newOrderNumber});
+      }
+
+      return newOrderNumber;
+    });
+
+    String orderId = 'ORD_$orderNumber';
+
+    // 3. Store Order inside user -> orders subcollection
+    DocumentReference orderRef = firestore
+        .collection('orders')
+        .doc(uid)
+        .collection('orders')
+        .doc(orderId);
 
     await orderRef.set({
+      'orderId': orderId,
       'userId': uid,
       'orderStatus': 'pending',
       'orderTotal': orderTotal,
@@ -58,6 +81,15 @@ class OrderService {
       'deliveryTip': deliveryTip,
     });
 
-    await firestore.collection('cart').doc(uid).delete();
+    // 4. Clear cart properly - delete each product field inside the cart document
+    WriteBatch batch = firestore.batch();
+
+    cartData.keys.forEach((skuId) {
+      batch.update(firestore.collection('cart').doc(uid), {
+        skuId: FieldValue.delete(),
+      });
+    });
+
+    await batch.commit();
   }
 }

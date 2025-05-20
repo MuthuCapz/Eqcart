@@ -45,9 +45,12 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
     Navigator.pop(context);
   }
 
-  void _handlePaymentError(PaymentFailureResponse response) {
+  Future<void> _handlePaymentError(PaymentFailureResponse response) async {
+    double amt = double.parse(amountController.text);
+    await WalletService.updateBalance(amt);
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text("Payment failed")));
+    Navigator.pop(context);
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {}

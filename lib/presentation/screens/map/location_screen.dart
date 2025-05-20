@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Don't forget this import
 import 'current_location_update.dart';
 import '../../../utils/colors.dart';
 import 'google_map_screen.dart';
@@ -10,45 +9,6 @@ class LocationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    void _navigateToMapScreen() async {
-      if (userId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please login to add addresses')),
-        );
-        return;
-      }
-
-      final locationProvider = LocationProvider();
-      await locationProvider.getUserLocation(); // get current location
-
-      if (locationProvider.currentPosition == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to fetch current location')),
-        );
-        return;
-      }
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChangeNotifierProvider.value(
-            value: locationProvider,
-            child: GoogleMapScreen(
-              userId: userId,
-              addressId: '', // Still empty = new address
-              addressData: {
-                'lat': locationProvider.currentPosition!.latitude,
-                'lng': locationProvider.currentPosition!.longitude,
-              },
-              isEditMode: false,
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: Column(
@@ -76,7 +36,19 @@ class LocationScreen extends StatelessWidget {
             child: Column(
               children: [
                 ElevatedButton(
-                  onPressed: _navigateToMapScreen,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChangeNotifierProvider(
+                          create: (_) => LocationProvider()..getUserLocation(),
+                          child: GoogleMapScreen(
+                            label: '',
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondaryColor,
                     shape: RoundedRectangleBorder(
@@ -101,7 +73,19 @@ class LocationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 30),
                 OutlinedButton(
-                  onPressed: _navigateToMapScreen,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChangeNotifierProvider(
+                          create: (_) => LocationProvider()..getUserLocation(),
+                          child: GoogleMapScreen(
+                            label: '',
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),

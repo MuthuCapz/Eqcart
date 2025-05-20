@@ -8,8 +8,8 @@ class WalletHelpPage extends StatelessWidget {
   static const walletOptions = [
     'Wallet balance issue',
     'Transfer balance to another account',
-    'Top-up Snoonu Wallet problems',
-    'Withdraw Snoonu Wallet balance',
+    'Top-up Eqcart Wallet problems',
+    'Withdraw Eqcart Wallet balance',
     'It\'s something else',
   ];
 

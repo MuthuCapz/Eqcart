@@ -107,7 +107,7 @@ class PaymentService {
   static Future<double> getWalletBalance() async {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     DocumentSnapshot snapshot = await FirebaseFirestore.instance
-        .collection('users')
+        .collection('users_wallets')
         .doc(uid)
         .collection('wallet')
         .doc('walletData')
@@ -123,7 +123,7 @@ class PaymentService {
   static Future<void> deductFromWallet(double amount) async {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     DocumentReference docRef = FirebaseFirestore.instance
-        .collection('users')
+        .collection('users_wallets')
         .doc(uid)
         .collection('wallet')
         .doc('walletData');
@@ -145,7 +145,7 @@ class PaymentService {
   static Future<void> refundWallet(double amount) async {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     DocumentReference docRef = FirebaseFirestore.instance
-        .collection('users')
+        .collection('users_wallets')
         .doc(uid)
         .collection('wallet')
         .doc('walletData');
@@ -166,7 +166,7 @@ class PaymentService {
   static Stream<double> walletBalanceStream() {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     return FirebaseFirestore.instance
-        .collection('users')
+        .collection('users_wallets')
         .doc(uid)
         .collection('wallet')
         .doc('walletData')

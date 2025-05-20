@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:provider/provider.dart';
+import '../../map/current_location_update.dart';
 import '../../map/google_map_screen.dart';
 import '../../map/location_screen.dart';
 import 'address_delete_dialogs.dart';
@@ -148,42 +150,15 @@ class AddressPage extends StatelessWidget {
                                 children: [
                                   IconButton(
                                     onPressed: () async {
-                                      final data =
-                                          doc.data() as Map<String, dynamic>;
-                                      final manual =
-                                          data['manual_location'] ?? {};
-                                      final map = data['map_location'] ?? {};
-
-                                      // Get the coordinates - prioritize map location over manual
-                                      final lat =
-                                          map['latitude'] ?? manual['latitude'];
-                                      final lng = map['longitude'] ??
-                                          manual['longitude'];
-                                      final address = map['address'] ??
-                                          manual['address'] ??
-                                          '';
-
-                                      if (lat == null || lng == null) {
-                                        Fluttertoast.showToast(
-                                            msg:
-                                                "Location data missing for this address");
-                                        return;
-                                      }
-
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => GoogleMapScreen(
-                                            userId: userId,
-                                            addressId: doc.id,
-                                            addressData: {
-                                              'latitude': lat,
-                                              'longitude': lng,
-                                              'address': address,
-                                              'label': doc
-                                                  .id, // The document ID is the label (Home/Office/Other)
-                                            },
-                                            isEditMode: true,
+                                          builder: (context) =>
+                                              ChangeNotifierProvider(
+                                            create: (_) => LocationProvider()
+                                              ..getUserLocation(),
+                                            child:
+                                                GoogleMapScreen(label: label),
                                           ),
                                         ),
                                       );
