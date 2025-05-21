@@ -81,7 +81,7 @@ class AuthService {
   final _formKey = GlobalKey<FormState>();
 
   Future<void> registerAccount(BuildContext context) async {
-    // ✅ Check if _formKey.currentState is null before calling validate()
+    // Check if _formKey.currentState is null before calling validate()
     if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
       return;
     }

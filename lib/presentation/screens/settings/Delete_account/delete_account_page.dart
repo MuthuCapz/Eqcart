@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../utils/colors.dart';
+import '../../splash/splash_screen.dart';
+import 'confirm_delete_dialog.dart';
+import 'delete_account_functions.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   @override
@@ -35,7 +39,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Top Warning Icon
             Container(
               height: 120,
               width: 120,
@@ -49,8 +52,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               ),
             ),
             SizedBox(height: 20),
-
-            // Main Title
             Text(
               'Are you absolutely sure?',
               textAlign: TextAlign.center,
@@ -61,8 +62,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               ),
             ),
             SizedBox(height: 12),
-
-            // Description
             Text(
               'This action will permanently delete your account and remove all associated data including wallet balance and reward points.',
               textAlign: TextAlign.center,
@@ -72,8 +71,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               ),
             ),
             SizedBox(height: 30),
-
-            // Agreement checkbox
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -105,10 +102,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                 ],
               ),
             ),
-
             Spacer(),
-
-            // Keep my account button
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
@@ -121,8 +115,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               ),
             ),
             SizedBox(height: 8),
-
-            // Delete account button
             SizedBox(
               width: double.infinity,
               child: AnimatedOpacity(
@@ -130,8 +122,15 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                 duration: Duration(milliseconds: 300),
                 child: ElevatedButton(
                   onPressed: isChecked
-                      ? () {
-                          // TODO: Delete logic here
+                      ? () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => ConfirmDeleteDialog(),
+                          );
+
+                          if (confirm == true) {
+                            await deleteAccount(context);
+                          }
                         }
                       : null,
                   style: ElevatedButton.styleFrom(

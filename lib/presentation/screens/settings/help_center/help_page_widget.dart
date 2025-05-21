@@ -5,11 +5,13 @@ import '../../../../utils/colors.dart';
 class HelpOptionsPage extends StatelessWidget {
   final String title;
   final List<String> options;
+  final void Function(int index)? onOptionTap;
 
   const HelpOptionsPage({
     super.key,
     required this.title,
     required this.options,
+    this.onOptionTap,
   });
 
   @override
@@ -71,12 +73,9 @@ class HelpOptionsPage extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right,
                   color: AppColors.primaryColor),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: AppColors.primaryColor,
-                    content: Text('Selected: ${options[index]}'),
-                  ),
-                );
+                if (onOptionTap != null) {
+                  onOptionTap!(index); // call callback with index
+                }
               },
             ),
           );

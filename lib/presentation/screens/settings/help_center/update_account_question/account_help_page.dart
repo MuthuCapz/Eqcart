@@ -1,4 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:eqcart/presentation/screens/settings/Delete_account/delete_account_page.dart';
+
+import 'package:flutter/material.dart';
 
 import '../help_page_widget.dart';
 
@@ -15,9 +17,33 @@ class AccountHelpPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const HelpOptionsPage(
+    return HelpOptionsPage(
       title: 'Update Account',
       options: accountOptions,
+      onOptionTap: (index) {
+        switch (index) {
+          case 1: // Deactivate my account
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DeleteAccountPage(),
+              ),
+            );
+            break;
+          case 2: // Delete My Account
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DeleteAccountPage(),
+              ),
+            );
+            break;
+          default:
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Tapped: ${accountOptions[index]}')),
+            );
+        }
+      },
     );
   }
 }
