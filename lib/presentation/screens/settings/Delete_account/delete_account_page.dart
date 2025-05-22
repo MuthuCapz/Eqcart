@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import '../../../../utils/colors.dart';
 import '../../splash/splash_screen.dart';
 import 'confirm_delete_dialog.dart';
@@ -123,6 +125,40 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                 child: ElevatedButton(
                   onPressed: isChecked
                       ? () async {
+                          final uid = FirebaseAuth.instance.currentUser?.uid;
+                          if (uid == null) return;
+
+                          final ordersSnapshot = await FirebaseFirestore
+                              .instance
+                              .collection('orders')
+                              .doc(uid)
+                              .collection('orders')
+                              .get();
+
+                          bool allDelivered = true;
+
+                          for (var doc in ordersSnapshot.docs) {
+                            final status = doc.data()['orderStatus'] ?? '';
+                            if (status.toLowerCase() != 'delivered') {
+                              allDelivered = false;
+                              break;
+                            }
+                          }
+
+                          if (!allDelivered) {
+                            Fluttertoast.showToast(
+                              msg:
+                                  'Your orders are still in process and not delivered yet.\nOnce your order are delivered, you can delete your account.',
+                              toastLength: Toast.LENGTH_LONG,
+                              gravity: ToastGravity.BOTTOM,
+                              backgroundColor: AppColors.primaryColor,
+                              textColor: Colors.white,
+                              fontSize: 14,
+                            );
+                            return;
+                          }
+
+                          // All orders delivered → Show confirm dialog
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => ConfirmDeleteDialog(),

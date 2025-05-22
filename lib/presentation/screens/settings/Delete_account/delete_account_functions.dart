@@ -12,6 +12,32 @@ Future<void> deleteAccount(BuildContext context) async {
   final firestore = FirebaseFirestore.instance;
 
   try {
+    final ordersSnapshot = await firestore
+        .collection('orders')
+        .doc(uid)
+        .collection('orders')
+        .get();
+
+    bool allDelivered = true;
+
+    for (var doc in ordersSnapshot.docs) {
+      final status = doc.data()['orderStatus'] ?? '';
+      if (status.toLowerCase() != 'delivered') {
+        allDelivered = false;
+        break;
+      }
+    }
+
+    if (!allDelivered) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Account cannot be deleted until all orders are marked as Delivered.'),
+        ),
+      );
+      return;
+    }
+
     final userDoc = await firestore.collection('users').doc(uid).get();
     final cartDoc = await firestore.collection('cart').doc(uid).get();
 

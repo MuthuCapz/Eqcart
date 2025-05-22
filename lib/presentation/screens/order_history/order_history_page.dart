@@ -1,12 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../utils/colors.dart';
-import 'order_details/OrderDetailsPage.dart';
+import 'order_details/order_details_page.dart';
 import 'order_history_functions.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class OrderHistoryPage extends StatelessWidget {
-  final String userId = 'y97BkXUaGCbItSFuHKxj3wXB9M62';
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,8 @@ class OrderHistoryPage extends StatelessWidget {
                       : Colors.orange;
                   final itemName = firstItem?['productName'] ?? '';
                   final itemQty = firstItem?['quantity'] ?? 1;
-                  final itemImage = firstItem?['imageUrl'];
+                  final itemImage = shop['shop_logo'];
+
                   final moreCount = items.length > 1 ? items.length - 1 : 0;
                   final dateTime = DateTime.parse(data['orderDateTime']);
                   final formattedDate =
@@ -101,12 +104,20 @@ class OrderHistoryPage extends StatelessWidget {
                           // Product Image
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              itemImage ?? '',
+                            child: CachedNetworkImage(
+                              imageUrl: itemImage ?? '',
                               height: 80,
                               width: 80,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              placeholder: (context, url) => Container(
+                                height: 80,
+                                width: 80,
+                                color: Colors.grey[100],
+                                child: const Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2)),
+                              ),
+                              errorWidget: (context, url, error) => Container(
                                 height: 80,
                                 width: 80,
                                 color: Colors.grey[200],
@@ -114,6 +125,7 @@ class OrderHistoryPage extends StatelessWidget {
                               ),
                             ),
                           ),
+
                           const SizedBox(width: 12),
 
                           // Order Details
@@ -169,11 +181,11 @@ class OrderHistoryPage extends StatelessWidget {
 
                                 const SizedBox(height: 4),
 
-                                /// Item Summary
-                                Text(
-                                  itemSummary,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
+                                // Item Summary
+// Text(
+//   itemSummary,
+//   style: const TextStyle(fontSize: 14),
+// ),
 
                                 const SizedBox(height: 4),
 

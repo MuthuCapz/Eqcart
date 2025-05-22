@@ -24,6 +24,7 @@ class OrderHistoryFunctions {
           shopDetails[shopId] = {
             'shop_name': data['shop_name'] ?? 'Unknown Shop',
             'city': data['location']?['city'] ?? 'Unknown City',
+            'shop_logo': data['shop_logo'],
           };
           break;
         }
