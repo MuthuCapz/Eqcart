@@ -235,7 +235,8 @@ class OrderHistoryPage extends StatelessWidget {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => OrderDetailsPage(
-                                                orderData: data),
+                                                orderData: data,
+                                                shopId: shopId),
                                           ),
                                         );
                                       },

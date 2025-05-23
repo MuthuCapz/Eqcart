@@ -146,6 +146,7 @@ class _HomeBodyState extends State<HomeBody> {
             _buildCategoryList(),
             SizedBox(height: 20),
             _buildPopularService(),
+            SizedBox(height: 70),
           ],
         ),
       ),
