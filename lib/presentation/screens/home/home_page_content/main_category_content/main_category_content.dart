@@ -1,7 +1,12 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 
+import '../../../../../utils/colors.dart';
 import '../banner_carousel.dart';
+import '../nearest_shops/matched_shops_page.dart';
 import 'main_category_shops_page.dart';
 
 class HomeBody extends StatefulWidget {
@@ -85,11 +90,25 @@ class _HomeBodyState extends State<HomeBody> {
                           Stack(
                             alignment: Alignment.center,
                             children: [
-                              CircleAvatar(
-                                radius: 35,
-                                backgroundImage:
-                                    NetworkImage(category["image_url"] ?? ""),
-                                backgroundColor: Colors.grey[300],
+                              Container(
+                                height: 70,
+                                width: 70,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                      8), // Rounded square
+                                  border: Border.all(
+                                    color: AppColors
+                                        .secondaryColor, // Change to your desired border color
+                                    width: 1, // Border thickness
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    category["image_url"] ?? "",
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
                               ),
                               if (category["category_offer"] != null &&
                                   category["category_offer"]
@@ -101,15 +120,16 @@ class _HomeBodyState extends State<HomeBody> {
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Colors.redAccent,
+                                      color: Colors.green,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
                                       category["category_offer"],
                                       style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold),
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -145,100 +165,11 @@ class _HomeBodyState extends State<HomeBody> {
             SizedBox(height: 20),
             _buildCategoryList(),
             SizedBox(height: 20),
-            _buildPopularService(),
+            MatchedShopsPage(),
             SizedBox(height: 70),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildPopularService() {
-    List<Map<String, dynamic>> services = [
-      {
-        "title": "Fresh Milk",
-        "subtitle": "Home made",
-        "price": "₹468 / 1 lit",
-        "rating": 4.7,
-        "image": "assets/images/milk.jpg"
-      },
-      {
-        "title": "Fresh Honey",
-        "subtitle": "Sweet goleden honey",
-        "price": "₹596 / 1 lit",
-        "rating": 4.8,
-        "image": "assets/images/honey.jpg"
-      },
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("Top Selling",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton(onPressed: () {}, child: Text("See all")),
-          ],
-        ),
-        SizedBox(height: 10),
-        Row(
-          children: services.map((service) {
-            return Expanded(
-              child: Card(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(10)),
-                        child: Image.asset(service["image"],
-                            height: 120,
-                            width: double.infinity,
-                            fit: BoxFit.cover)),
-                    Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(service["title"],
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.bold)),
-                          Text(service["subtitle"],
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.grey)),
-                          SizedBox(height: 5),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(service["price"],
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green)),
-                              Row(
-                                children: [
-                                  Icon(Icons.star,
-                                      color: Colors.amber, size: 16),
-                                  Text(service["rating"].toString(),
-                                      style: TextStyle(fontSize: 14)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 }

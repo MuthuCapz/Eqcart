@@ -184,30 +184,6 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                     ),
                   ),
                 ),
-
-              /// Add Icon - Top Right
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    /// Favorite Icon
-                    GestureDetector(
-                      onTap: () => setState(() => isFavorite = !isFavorite),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        radius: 14,
-                        child: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : Colors.grey,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
 

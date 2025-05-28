@@ -33,13 +33,19 @@ class CategorySelector extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  radius: isSelected ? 32 : 28,
-                  backgroundColor: isSelected
-                      ? AppColors.secondaryColor
-                      : Colors.grey.shade300,
-                  backgroundImage:
-                      CachedNetworkImageProvider(category['image_url']),
+                Container(
+                  width: isSelected ? 64 : 56,
+                  height: isSelected ? 64 : 56,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.secondaryColor
+                        : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(12), // Rounded square
+                    image: DecorationImage(
+                      image: CachedNetworkImageProvider(category['image_url']),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(

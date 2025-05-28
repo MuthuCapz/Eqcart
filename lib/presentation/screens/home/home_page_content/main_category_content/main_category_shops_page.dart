@@ -117,7 +117,7 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
 
                   return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(
-                        16, 16, 16, 80), // 👈 add bottom padding for the bar
+                        16, 16, 16, 80), //  add bottom padding for the bar
                     itemCount: shops.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 14),
                     itemBuilder: (context, index) {
