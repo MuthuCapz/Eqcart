@@ -71,6 +71,7 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
             'shop_logo': data['shop_logo'],
             'description': data['description'],
             'city': data['location']?['city'] ?? '',
+            'isActive': data['isActive'] ?? true,
           };
         }).toList();
       },
@@ -154,80 +155,104 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
   }
 
   Widget _buildShopTile(Map<String, dynamic> shop) {
+    final isActive = shop['isActive'] == true;
+
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ShopCategoriesPage(
-                shopId: shop['shop_id'], shopName: shop['shop_name']),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: CachedNetworkImage(
-                  imageUrl: shop['shop_logo'] ?? '',
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => CircularProgressIndicator(),
-                  errorWidget: (context, url, error) => Icon(Icons.store),
-                )),
-            const SizedBox(width: 35),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(shop['shop_name'] ?? '',
-                      style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryColor)),
-                  const SizedBox(height: 6),
-                  Text(
-                    shop['description'] ?? 'No description',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+      onTap: isActive
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ShopCategoriesPage(
+                      shopId: shop['shop_id'], shopName: shop['shop_name']),
+                ),
+              );
+            }
+          : null, // disable tap
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Opacity(
+            opacity: isActive ? 1.0 : 0.5, // blur effect
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on,
-                          size: 14, color: AppColors.secondaryColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        shop['city'] ?? '',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                      ),
-                    ],
+                ],
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: CachedNetworkImage(
+                      imageUrl: shop['shop_logo'] ?? '',
+                      width: 70,
+                      height: 70,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          const CircularProgressIndicator(),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.store),
+                    ),
+                  ),
+                  const SizedBox(width: 35),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(shop['shop_name'] ?? '',
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryColor)),
+                        const SizedBox(height: 6),
+                        Text(
+                          shop['description'] ?? 'No description',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on,
+                                size: 14, color: AppColors.secondaryColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              shop['city'] ?? '',
+                              style: TextStyle(
+                                  fontSize: 13, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 10),
+                    child: Icon(Icons.arrow_forward_ios_rounded,
+                        size: 18, color: AppColors.primaryColor),
                   ),
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(right: 10),
-              child: Icon(Icons.arrow_forward_ios_rounded,
-                  size: 18, color: AppColors.primaryColor),
+          ),
+          if (!isActive)
+            Image.asset(
+              'assets/images/closed.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
