@@ -12,6 +12,8 @@ class AddToCartButtons extends StatefulWidget {
   final String variantKey; // Variant weight, such as '500g', '1kg'
   final String variantWeight; // Variant's specific weight (volume)
   final String shopId;
+  final String categoryName;
+  final String stock;
   final VoidCallback onCartUpdated;
 
   const AddToCartButtons({
@@ -23,7 +25,9 @@ class AddToCartButtons extends StatefulWidget {
     required this.variantKey,
     required this.variantWeight,
     required this.shopId,
+    required this.categoryName,
     required this.onCartUpdated,
+    required this.stock,
     Key? key,
   }) : super(key: key);
 
@@ -84,7 +88,21 @@ class _AddToCartButtonsState extends State<AddToCartButtons> {
     final String variantKeyValue = widget.variantWeight.isNotEmpty
         ? widget.variantWeight
         : widget.variantKey;
+    bool shopIsActive = false;
+    final shopRef =
+        FirebaseFirestore.instance.collection('shops').doc(widget.shopId);
+    final ownShopRef =
+        FirebaseFirestore.instance.collection('own_shops').doc(widget.shopId);
 
+    final shopSnap = await shopRef.get();
+    final ownShopSnap = await ownShopRef.get();
+
+    if (shopSnap.exists && shopSnap.data()!.containsKey('isActive')) {
+      shopIsActive = shopSnap['isActive'] == true;
+    } else if (ownShopSnap.exists &&
+        ownShopSnap.data()!.containsKey('isActive')) {
+      shopIsActive = ownShopSnap['isActive'] == true;
+    }
     // Check if the variant already exists in the list
     int existingIndex = productList
         .indexWhere((element) => element[variantKeyName] == variantKeyValue);
@@ -100,7 +118,10 @@ class _AddToCartButtonsState extends State<AddToCartButtons> {
         'price': widget.price,
         'quantity': qty,
         'shopid': widget.shopId,
+        'shop_isActive': shopIsActive,
         'image_url': widget.imageUrl,
+        'stock': widget.stock,
+        'category': widget.categoryName,
         variantKeyName: variantKeyValue,
       };
 

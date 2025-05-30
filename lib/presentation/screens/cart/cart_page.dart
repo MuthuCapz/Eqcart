@@ -39,57 +39,67 @@ class _CartPageState extends State<CartPage> {
   String? selectedAddress;
 
   String userId = FirebaseAuth.instance.currentUser!.uid;
+  StreamSubscription<DocumentSnapshot>? _cartSubscription;
 
   @override
   void initState() {
     super.initState();
+    listenToCartChanges();
     fetchCartItems();
     startTimerForOrderType();
-    _setupStockListeners();
   }
 
-  void _setupStockListeners() {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
+  void listenToCartChanges() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
 
-    FirebaseFirestore.instance
+    _cartSubscription = FirebaseFirestore.instance
         .collection('cart')
-        .doc(userId)
+        .doc(uid)
         .snapshots()
         .listen((cartSnapshot) async {
       if (!cartSnapshot.exists) return;
 
-      final cartData = cartSnapshot.data() as Map<String, dynamic>;
-      final List<Map<String, dynamic>> allItems = [];
+      List<Map<String, dynamic>> loadedItems = [];
+      double total = 0;
 
-      cartData.forEach((skuKey, productList) {
+      final cartData = cartSnapshot.data() as Map<String, dynamic>;
+
+      for (var skuKey in cartData.keys) {
+        final productList = cartData[skuKey];
         if (productList is List) {
           for (var product in productList) {
             if (product is Map<String, dynamic>) {
               final item = Map<String, dynamic>.from(product);
               item['sku_key'] = skuKey;
-              item['variant_weight'] = product['variant_weight'] ?? '';
-              allItems.add(item);
+              item['category'] = product['category'] ?? '';
+              item['variant_weight'] =
+                  product['variant_weight']?.toString() ?? '';
+              item['shopid'] = product['shopid'] ?? '';
+
+              final isAvailable = await checkProductAvailability(
+                skuKey,
+                item['variant_weight'],
+                item['category'],
+              );
+
+              final isShopActive = await isShopStillActive(item['shopid']);
+
+              item['is_available'] = isAvailable && isShopActive;
+              loadedItems.add(item);
+
+              if (item['is_available']) {
+                total += (item['price'] ?? 0) * (item['quantity'] ?? 1);
+              }
             }
           }
         }
+      }
+
+      setState(() {
+        cartItems = loadedItems;
+        totalAmount = total;
       });
-
-      // Check stock for all items
-      bool needsUpdate = false;
-      for (var item in allItems) {
-        final stockInfo = await checkStockStatus(item);
-        if (!stockInfo['inStock'] ||
-            (item['quantity'] ?? 1) > stockInfo['availableQuantity']) {
-          needsUpdate = true;
-          break;
-        }
-      }
-
-      if (needsUpdate) {
-        await _syncCartWithStock(userId, allItems);
-        fetchCartItems(); // Refresh the UI
-      }
     });
   }
 
@@ -501,41 +511,40 @@ class _CartPageState extends State<CartPage> {
       if (cartSnapshot.exists) {
         List<Map<String, dynamic>> loadedItems = [];
         double total = 0;
+
         final cartData = cartSnapshot.data() as Map<String, dynamic>;
 
-        // Check stock for all items first
-        final List<Future> stockChecks = [];
-        final List<Map<String, dynamic>> allItems = [];
-
-        cartData.forEach((skuKey, productList) {
+        for (var skuKey in cartData.keys) {
+          final productList = cartData[skuKey];
           if (productList is List) {
             for (var product in productList) {
               if (product is Map<String, dynamic>) {
                 final item = Map<String, dynamic>.from(product);
                 item['sku_key'] = skuKey;
-                item['variant_weight'] = product['variant_weight'] ?? '';
-                allItems.add(item);
+                item['category'] = product['category'] ?? '';
+                item['variant_weight'] =
+                    product['variant_weight']?.toString() ?? '';
+                item['shopid'] = product['shopid'] ?? '';
+
+                print('Cart item variant weight: ${item['variant_weight']}');
+
+                bool isAvailable = await checkProductAvailability(
+                    skuKey, item['variant_weight'], item['category']);
+
+                // Check if the shop is active in either collection
+                bool isShopActive = await isShopStillActive(item['shopid']);
+
+                // Update availability based on shop status
+                item['is_available'] = isAvailable && isShopActive;
+                loadedItems.add(item);
+
+                if (item['is_available']) {
+                  total += (item['price'] ?? 0) * (item['quantity'] ?? 1);
+                }
               }
             }
           }
-        });
-
-        // Check stock for all items
-        for (var item in allItems) {
-          stockChecks.add(checkStockStatus(item).then((stockInfo) {
-            if (stockInfo['inStock'] &&
-                (item['quantity'] ?? 1) <= stockInfo['availableQuantity']) {
-              loadedItems.add(item);
-              total += (stockInfo['price'] ?? item['price'] ?? 0) *
-                  (item['quantity'] ?? 1);
-            }
-          }));
         }
-
-        await Future.wait(stockChecks);
-
-        // Update cart with only in-stock items
-        await _syncCartWithStock(uid, allItems);
 
         setState(() {
           cartItems = loadedItems;
@@ -547,25 +556,108 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  Future<void> _syncCartWithStock(
-      String uid, List<Map<String, dynamic>> allItems) async {
-    final cartRef = FirebaseFirestore.instance.collection('cart').doc(uid);
-    final Map<String, List<Map<String, dynamic>>> updatedCart = {};
+  /// Helper function to check if a shop is still active
+  Future<bool> isShopStillActive(String shopId) async {
+    try {
+      final shopRef =
+          FirebaseFirestore.instance.collection('shops').doc(shopId);
+      final ownShopRef =
+          FirebaseFirestore.instance.collection('own_shops').doc(shopId);
 
-    // Check stock for all items and keep only in-stock ones
-    for (var item in allItems) {
-      final stockInfo = await checkStockStatus(item);
-      if (stockInfo['inStock'] &&
-          (item['quantity'] ?? 1) <= stockInfo['availableQuantity']) {
-        if (!updatedCart.containsKey(item['sku_key'])) {
-          updatedCart[item['sku_key']] = [];
-        }
-        updatedCart[item['sku_key']]!.add(item);
+      final shopDoc = await shopRef.get();
+      if (shopDoc.exists && shopDoc.data()?['isActive'] == true) {
+        return true;
       }
-    }
 
-    // Update cart in Firestore
-    await cartRef.set(updatedCart);
+      final ownShopDoc = await ownShopRef.get();
+      if (ownShopDoc.exists && ownShopDoc.data()?['isActive'] == true) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('Error checking shop activity for $shopId: $e');
+      return false;
+    }
+  }
+
+  Future<bool> checkProductAvailability(
+      String skuId, String variantWeight, String category) async {
+    try {
+      print(
+          'Checking stock for SKU: $skuId, Variant: $variantWeight, Category: $category');
+
+      if (category.isEmpty) return false;
+
+      // First check in shops_products
+      final shopsQuery =
+          await FirebaseFirestore.instance.collection('shops_products').get();
+
+      for (final shopDoc in shopsQuery.docs) {
+        final productDoc = await FirebaseFirestore.instance
+            .collection('shops_products')
+            .doc(shopDoc.id)
+            .collection(category)
+            .doc(skuId)
+            .get();
+
+        if (productDoc.exists) {
+          final productData = productDoc.data()!;
+          print('Found in shops_products: $productData');
+
+          if (productData['variants'] != null && variantWeight.isNotEmpty) {
+            final variants = productData['variants'] as List;
+            for (var variant in variants) {
+              final v = variant as Map<String, dynamic>;
+              if (v['volume'] == variantWeight) {
+                return v['stock'] == 'Instock' || v['stock'] == 'In Stock';
+              }
+            }
+          }
+
+          return productData['stock'] == 'Instock' ||
+              productData['stock'] == 'In Stock';
+        }
+      }
+
+      // Now check in own_shops_products
+      final ownShopsQuery = await FirebaseFirestore.instance
+          .collection('own_shops_products')
+          .get();
+
+      for (final shopDoc in ownShopsQuery.docs) {
+        final productDoc = await FirebaseFirestore.instance
+            .collection('own_shops_products')
+            .doc(shopDoc.id)
+            .collection(category)
+            .doc(skuId)
+            .get();
+
+        if (productDoc.exists) {
+          final productData = productDoc.data()!;
+          print('Found in own_shops_products: $productData');
+
+          if (productData['variants'] != null && variantWeight.isNotEmpty) {
+            final variants = productData['variants'] as List;
+            for (var variant in variants) {
+              final v = variant as Map<String, dynamic>;
+              if (v['volume'] == variantWeight) {
+                return v['stock'] == 'Instock' || v['stock'] == 'In Stock';
+              }
+            }
+          }
+
+          return productData['stock'] == 'Instock' ||
+              productData['stock'] == 'In Stock';
+        }
+      }
+
+      print('Product not found in any shop');
+      return false;
+    } catch (e) {
+      print('Error checking availability: $e');
+      return false;
+    }
   }
 
   Future<void> updateQuantity(int index, int newQuantity) async {
@@ -723,53 +815,7 @@ class _CartPageState extends State<CartPage> {
   @override
   void dispose() {
     _timer.cancel();
+    _cartSubscription?.cancel();
     super.dispose();
-  }
-
-  Future<Map<String, dynamic>> checkStockStatus(
-      Map<String, dynamic> item) async {
-    try {
-      final productId = item['sku_id'];
-      final variantWeight = item['variant_weight'];
-      final shopId = item['shopid'];
-
-      // First try own_shops_products collection
-      DocumentSnapshot productSnapshot = await FirebaseFirestore.instance
-          .collection('own_shops_products')
-          .doc(shopId)
-          .collection('products')
-          .doc(productId)
-          .get();
-
-      if (!productSnapshot.exists) {
-        // If not found in own_shops, try shops_products
-        productSnapshot = await FirebaseFirestore.instance
-            .collection('shops_products')
-            .doc(shopId)
-            .collection('products')
-            .doc(productId)
-            .get();
-      }
-
-      if (productSnapshot.exists) {
-        final productData = productSnapshot.data() as Map<String, dynamic>;
-        final variants = productData['variants'] as List<dynamic>? ?? [];
-
-        for (var variant in variants) {
-          if (variant is Map && variant['variant_weight'] == variantWeight) {
-            return {
-              'inStock': variant['stock_status'] == 'In Stock',
-              'availableQuantity': variant['quantity'] ?? 0,
-              'price': variant['price'] ?? item['price']
-            };
-          }
-        }
-      }
-
-      return {'inStock': false, 'availableQuantity': 0, 'price': item['price']};
-    } catch (e) {
-      print('Error checking stock: $e');
-      return {'inStock': false, 'availableQuantity': 0, 'price': item['price']};
-    }
   }
 }

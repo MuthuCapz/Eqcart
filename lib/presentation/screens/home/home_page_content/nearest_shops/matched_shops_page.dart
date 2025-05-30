@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../../../../../utils/colors.dart';
 import '../main_category_content/ShopWiseCategoriesPage.dart';
 
 class MatchedShopsPage extends StatelessWidget {
@@ -189,7 +190,7 @@ class MatchedShopsPage extends StatelessWidget {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withOpacity(0.0),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -197,7 +198,7 @@ class MatchedShopsPage extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: Colors.green,
+                    color: AppColors.primaryColor,
                   ),
                 ),
               ),

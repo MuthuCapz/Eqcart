@@ -160,20 +160,19 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
     return InkWell(
       onTap: isActive
           ? () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ShopCategoriesPage(
-                      shopId: shop['shop_id'], shopName: shop['shop_name']),
-                ),
-              );
-            }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ShopCategoriesPage(
+                shopId: shop['shop_id'], shopName: shop['shop_name']),
+          ),
+        );
+      }
           : null, // disable tap
       child: Stack(
-        alignment: Alignment.center,
         children: [
           Opacity(
-            opacity: isActive ? 1.0 : 0.5, // blur effect
+            opacity: isActive ? 1.0 : 0.5,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -197,9 +196,9 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
                       height: 70,
                       fit: BoxFit.cover,
                       placeholder: (context, url) =>
-                          const CircularProgressIndicator(),
+                      const CircularProgressIndicator(),
                       errorWidget: (context, url, error) =>
-                          const Icon(Icons.store),
+                      const Icon(Icons.store),
                     ),
                   ),
                   const SizedBox(width: 35),
@@ -218,7 +217,7 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style:
-                              TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          TextStyle(fontSize: 13, color: Colors.grey[700]),
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -246,14 +245,19 @@ class _CategoryShopsPageState extends State<CategoryShopsPage> {
             ),
           ),
           if (!isActive)
-            Image.asset(
-              'assets/images/closed.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+            Positioned(
+              right: 55,
+              top: 15,
+              child: Image.asset(
+                'assets/images/closed.png',
+                width: 70,
+                height: 70,
+                fit: BoxFit.contain,
+              ),
             ),
         ],
       ),
     );
   }
+
 }
