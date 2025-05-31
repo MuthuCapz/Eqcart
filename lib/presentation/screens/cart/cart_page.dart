@@ -37,16 +37,114 @@ class _CartPageState extends State<CartPage> {
   bool isDeliveryNowEnabled = true;
   bool isTodayEnabled = true;
   String? selectedAddress;
-
+  bool _isRefreshing = false;
+  bool _isLoading = false;
+  bool _isDataLoaded = false;
   String userId = FirebaseAuth.instance.currentUser!.uid;
   StreamSubscription<DocumentSnapshot>? _cartSubscription;
 
   @override
   void initState() {
     super.initState();
-    listenToCartChanges();
-    fetchCartItems();
+    _loadInitialData();
     startTimerForOrderType();
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() {
+      _isLoading = true;
+      _isDataLoaded = false;
+    });
+
+    // Load cached data first for immediate display
+    final cachedItems = await _getCachedCartItems();
+    if (cachedItems != null && mounted) {
+      setState(() {
+        cartItems = cachedItems;
+        totalAmount = _calculateTotal(cachedItems);
+        _isDataLoaded = true;
+      });
+    }
+
+    // Then fetch fresh data and listen for updates
+    await fetchCartItems();
+    listenToCartChanges();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<List<Map<String, dynamic>>?> _getCachedCartItems() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return null;
+
+    try {
+      final cartSnapshot = await FirebaseFirestore.instance
+          .collection('cart')
+          .doc(uid)
+          .get(const GetOptions(source: Source.cache));
+
+      if (cartSnapshot.exists) {
+        return _processCartData(cartSnapshot.data()!, checkAvailability: false);
+      }
+    } catch (e) {
+      print('Error getting cached cart: $e');
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> _processCartData(
+    Map<String, dynamic> cartData, {
+    bool checkAvailability = true,
+  }) async {
+    List<Map<String, dynamic>> loadedItems = [];
+
+    for (var skuKey in cartData.keys) {
+      final productList = cartData[skuKey];
+      if (productList is List) {
+        for (var product in productList) {
+          if (product is Map<String, dynamic>) {
+            final item = Map<String, dynamic>.from(product);
+            item['sku_key'] = skuKey;
+            item['category'] = product['category'] ?? '';
+            item['variant_weight'] =
+                product['variant_weight']?.toString() ?? '';
+            item['shopid'] = product['shopid'] ?? '';
+
+            if (checkAvailability) {
+              item['is_available'] = await checkProductAvailability(
+                    skuKey,
+                    item['variant_weight'],
+                    item['category'],
+                  ) &&
+                  await isShopStillActive(item['shopid']);
+            } else {
+              item['is_available'] = true; // Assume available for cached data
+            }
+
+            loadedItems.add(item);
+          }
+        }
+      }
+    }
+    if (checkAvailability && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkForUnavailableItems();
+      });
+    }
+    return loadedItems;
+  }
+
+  double _calculateTotal(List<Map<String, dynamic>> items) {
+    return items.fold(0, (sum, item) {
+      return sum +
+          (item['is_available']
+              ? (item['price'] ?? 0) * (item['quantity'] ?? 1)
+              : 0);
+    });
   }
 
   void listenToCartChanges() {
@@ -103,6 +201,104 @@ class _CartPageState extends State<CartPage> {
     });
   }
 
+  void _checkForUnavailableItems() {
+    final unavailableItems =
+        cartItems.where((item) => !item['is_available']).toList();
+
+    if (unavailableItems.isNotEmpty && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showUnavailableItemsDialog(unavailableItems);
+      });
+    }
+  }
+
+  void _showUnavailableItemsDialog(
+      List<Map<String, dynamic>> unavailableItems) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent tap outside to close
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false, // Prevent back button closing
+        child: AlertDialog(
+          title: const Text('Unavailable Items'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('The following items are no longer available:'),
+              const SizedBox(height: 10),
+              ...unavailableItems
+                  .map(
+                    (item) => Text(
+                        '- ${item['product_name']} (${item['variant_weight']})'),
+                  )
+                  .toList(),
+              const SizedBox(height: 10),
+              const Text('Would you like to remove them from your cart?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _removeUnavailableItems(unavailableItems);
+              },
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _removeUnavailableItems(List<Map<String, dynamic>> items) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final cartRef = FirebaseFirestore.instance.collection('cart').doc(uid);
+      final cartSnapshot = await cartRef.get();
+
+      if (cartSnapshot.exists) {
+        final cartData = cartSnapshot.data() as Map<String, dynamic>;
+        final updatedCartData = Map<String, dynamic>.from(cartData);
+
+        for (var item in items) {
+          final skuKey = item['sku_key'];
+          final productId = item['sku_id'];
+          final variantWeight = item['variant_weight'];
+
+          if (updatedCartData.containsKey(skuKey)) {
+            List<dynamic> productList = updatedCartData[skuKey];
+
+            productList.removeWhere((product) =>
+                product['sku_id'] == productId &&
+                product['variant_weight'] == variantWeight);
+
+            if (productList.isEmpty) {
+              updatedCartData.remove(skuKey);
+            } else {
+              updatedCartData[skuKey] = productList;
+            }
+          }
+        }
+
+        await cartRef.set(updatedCartData);
+
+        // Update local state
+        setState(() {
+          cartItems.removeWhere((item) => !item['is_available']);
+          totalAmount = _calculateTotal(cartItems);
+        });
+      }
+    } catch (e) {
+      print('Error removing unavailable items: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to remove unavailable items')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,102 +313,114 @@ class _CartPageState extends State<CartPage> {
         backgroundColor: AppColors.secondaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
+      body: Stack(
         children: [
-          // Cart Items
-          ...cartItems.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            return CartItemWidget(
-              item: item,
-              onQuantityChanged: (newQuantity) =>
-                  updateQuantity(index, newQuantity),
-              onDelete: () => _showDeleteConfirmationDialog(index),
-            );
-          }),
+          RefreshIndicator(
+            onRefresh: () => fetchCartItems(isRefresh: true),
+            child: ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                if (_isLoading || _isRefreshing)
+                  const LinearProgressIndicator(minHeight: 2),
 
-          Column(
-            children: [
-              const SizedBox(height: 5),
-              _buildAddMoreProductsButton(),
-              const SizedBox(height: 16),
-              _buildCouponSection(),
-            ],
+                // Cart Items
+                ...cartItems.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return CartItemWidget(
+                    item: item,
+                    onQuantityChanged: (newQuantity) =>
+                        updateQuantity(index, newQuantity),
+                    onDelete: () => _showDeleteConfirmationDialog(index),
+                  );
+                }),
+
+                Column(
+                  children: [
+                    const SizedBox(height: 5),
+                    _buildAddMoreProductsButton(),
+                    const SizedBox(height: 16),
+                    _buildCouponSection(),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+                StreamBuilder<bool>(
+                  stream: DateTimeUtils.isDeliveryNowDisabledStream(),
+                  builder: (context, snapshot) {
+                    final isDeliveryNowDisabled = snapshot.data ?? false;
+
+                    return OrderTypeSelector(
+                      orderType: orderType,
+                      dateSlots: dateSlots,
+                      timeSlots: timeSlots,
+                      selectedDate: selectedDate,
+                      selectedTime: selectedTime,
+                      isDeliveryNowEnabled: !isDeliveryNowDisabled,
+                      isTodayEnabled: !isDeliveryNowDisabled,
+                      onOrderTypeChanged: (type) {
+                        setState(() {
+                          orderType = type;
+                          if (orderType == 'Schedule Order') {
+                            generateDateSlots();
+                            listenToTimeSlots();
+                          }
+                        });
+                      },
+                      onDateSelected: (date) {
+                        setState(() {
+                          selectedDate = date;
+                        });
+                      },
+                      onTimeSelected: (time) {
+                        setState(() {
+                          selectedTime = time;
+                        });
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                DefaultAddressWidget(
+                  userId: userId,
+                  onAddressSelected: (address) {
+                    setState(() {
+                      selectedAddress = address;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 20),
+                BillSummaryWidget(
+                  isExpanded: isOrderSummaryExpanded,
+                  totalAmount: totalAmount,
+                  deliveryTipAmount: deliveryTipAmount,
+                  onToggleExpansion: () {
+                    setState(() {
+                      isOrderSummaryExpanded = !isOrderSummaryExpanded;
+                    });
+                  },
+                  onTipAdded: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) =>
+                          AddTipDialog(initialTip: deliveryTipAmount),
+                    ).then((selectedTip) {
+                      if (selectedTip != null) {
+                        setState(() {
+                          deliveryTipAmount = selectedTip;
+                        });
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 15),
+              ],
+            ),
           ),
-
-          const SizedBox(height: 20),
-          StreamBuilder<bool>(
-            stream: DateTimeUtils.isDeliveryNowDisabledStream(),
-            builder: (context, snapshot) {
-              final isDeliveryNowDisabled = snapshot.data ?? false;
-
-              return OrderTypeSelector(
-                orderType: orderType,
-                dateSlots: dateSlots,
-                timeSlots: timeSlots,
-                selectedDate: selectedDate,
-                selectedTime: selectedTime,
-                isDeliveryNowEnabled: !isDeliveryNowDisabled,
-                isTodayEnabled: !isDeliveryNowDisabled,
-                onOrderTypeChanged: (type) {
-                  setState(() {
-                    orderType = type;
-                    if (orderType == 'Schedule Order') {
-                      generateDateSlots();
-                      listenToTimeSlots();
-                    }
-                  });
-                },
-                onDateSelected: (date) {
-                  setState(() {
-                    selectedDate = date;
-                  });
-                },
-                onTimeSelected: (time) {
-                  setState(() {
-                    selectedTime = time;
-                  });
-                },
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-
-          DefaultAddressWidget(
-            userId: userId,
-            onAddressSelected: (address) {
-              setState(() {
-                selectedAddress = address;
-              });
-            },
-          ),
-
-          const SizedBox(height: 20),
-          BillSummaryWidget(
-            isExpanded: isOrderSummaryExpanded,
-            totalAmount: totalAmount,
-            deliveryTipAmount: deliveryTipAmount,
-            onToggleExpansion: () {
-              setState(() {
-                isOrderSummaryExpanded = !isOrderSummaryExpanded;
-              });
-            },
-            onTipAdded: () {
-              showDialog(
-                context: context,
-                builder: (context) =>
-                    AddTipDialog(initialTip: deliveryTipAmount),
-              ).then((selectedTip) {
-                if (selectedTip != null) {
-                  setState(() {
-                    deliveryTipAmount = selectedTip;
-                  });
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 15),
+          if (_isLoading && !_isDataLoaded)
+            const Center(child: CircularProgressIndicator()),
         ],
       ),
       bottomNavigationBar: _buildCheckoutButton(),
@@ -334,6 +542,7 @@ class _CartPageState extends State<CartPage> {
   }
 
   Widget _buildCheckoutButton() {
+    final isButtonEnabled = _isDataLoaded && !_isRefreshing && !_isLoading;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -347,65 +556,96 @@ class _CartPageState extends State<CartPage> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () async {
-          final bool isDisabledNow =
-              await DateTimeUtils.isDeliveryNowDisabledStream().first;
+        onPressed: isButtonEnabled
+            ? () async {
+                // Show loading if cart is empty or refreshing
+                if (cartItems.isEmpty || _isRefreshing) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Please wait while we update your cart')),
+                  );
+                  return;
+                }
 
-          if (orderType == 'Schedule Order') {
-            final bool isTodaySelected = selectedDate == 'Today';
-            final bool isInvalid = selectedDate.isEmpty ||
-                selectedTime.isEmpty ||
-                (isTodaySelected && isDisabledNow);
+                // Check if all items are unavailable
+                if (cartItems.every((item) => !item['is_available'])) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            'All items in your cart are currently unavailable')),
+                  );
+                  return;
+                }
 
-            if (isInvalid) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content:
-                      Text('Please select a valid delivery date and time.'),
-                ),
-              );
-              return; // Don't proceed
-            }
-          } else if (orderType == 'Delivery Now') {
-            if (isDisabledNow) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Delivery is not available right now. Please schedule your order.'),
-                ),
-              );
-              return; // Don't proceed
-            }
-          }
+                // Check address selection
+                if (selectedAddress == null || selectedAddress!.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Please select a delivery address')),
+                  );
+                  return;
+                }
 
-          final deliveryDetails = {
-            'orderType': orderType,
-            if (orderType == 'Schedule Order') ...{
-              'scheduledDate': selectedDate,
-              'scheduledTimeSlot': selectedTime,
-            }
-          };
+                // Check delivery time validity
+                final bool isDisabledNow =
+                    await DateTimeUtils.isDeliveryNowDisabledStream().first;
 
-          showModalBottomSheet(
-            context: context,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            builder: (context) => CheckoutBottomSheet(
-              totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
-              deliveryDetails: deliveryDetails,
-              selectedAddress: selectedAddress,
-            ),
-          );
+                if (orderType == 'Schedule Order') {
+                  final bool isTodaySelected = selectedDate == 'Today';
+                  final bool isInvalid = selectedDate.isEmpty ||
+                      selectedTime.isEmpty ||
+                      (isTodaySelected && isDisabledNow);
 
-          print("Selected Address: $selectedAddress");
-        },
+                  if (isInvalid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Please select a valid delivery date and time.'),
+                      ),
+                    );
+                    return;
+                  }
+                } else if (orderType == 'Delivery Now' && isDisabledNow) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Delivery is not available right now. Please schedule your order.'),
+                    ),
+                  );
+                  return;
+                }
+
+                final deliveryDetails = {
+                  'orderType': orderType,
+                  if (orderType == 'Schedule Order') ...{
+                    'scheduledDate': selectedDate,
+                    'scheduledTimeSlot': selectedTime,
+                  }
+                };
+
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  builder: (context) => CheckoutBottomSheet(
+                    totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
+                    deliveryDetails: deliveryDetails,
+                    selectedAddress: selectedAddress,
+                  ),
+                );
+              }
+            : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.secondaryColor,
+          backgroundColor:
+              isButtonEnabled ? AppColors.secondaryColor : Colors.grey,
           foregroundColor: Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: isButtonEnabled ? 4 : 0,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -500,7 +740,11 @@ class _CartPageState extends State<CartPage> {
     });
   }
 
-  Future<void> fetchCartItems() async {
+  Future<void> fetchCartItems({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() => _isRefreshing = true);
+    }
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
@@ -526,15 +770,10 @@ class _CartPageState extends State<CartPage> {
                     product['variant_weight']?.toString() ?? '';
                 item['shopid'] = product['shopid'] ?? '';
 
-                print('Cart item variant weight: ${item['variant_weight']}');
-
                 bool isAvailable = await checkProductAvailability(
                     skuKey, item['variant_weight'], item['category']);
 
-                // Check if the shop is active in either collection
                 bool isShopActive = await isShopStillActive(item['shopid']);
-
-                // Update availability based on shop status
                 item['is_available'] = isAvailable && isShopActive;
                 loadedItems.add(item);
 
@@ -549,10 +788,21 @@ class _CartPageState extends State<CartPage> {
         setState(() {
           cartItems = loadedItems;
           totalAmount = total;
+          _isDataLoaded = true;
+          if (isRefresh) _isRefreshing = false;
         });
+
+        // Check for unavailable items after loading
+        _checkForUnavailableItems();
       }
     } catch (e) {
       print('Error fetching cart items: $e');
+      if (isRefresh) {
+        setState(() => _isRefreshing = false);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to refresh cart')),
+      );
     }
   }
 

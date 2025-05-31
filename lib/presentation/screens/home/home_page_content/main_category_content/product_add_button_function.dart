@@ -118,9 +118,7 @@ class _AddToCartButtonsState extends State<AddToCartButtons> {
         'price': widget.price,
         'quantity': qty,
         'shopid': widget.shopId,
-        'shop_isActive': shopIsActive,
         'image_url': widget.imageUrl,
-        'stock': widget.stock,
         'category': widget.categoryName,
         variantKeyName: variantKeyValue,
       };
