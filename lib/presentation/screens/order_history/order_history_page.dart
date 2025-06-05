@@ -82,6 +82,12 @@ class OrderHistoryPage extends StatelessWidget {
                   final itemSummary = moreCount > 0
                       ? "$itemName ($itemQty) + $moreCount more"
                       : "$itemName ($itemQty)";
+                  final cancelledTime = (shop['cancelledTime'] ?? 0) * 60;
+                  final now = DateTime.now();
+                  final orderPlacedTime = DateTime.parse(data['orderDateTime']);
+                  final secondsSinceOrder =
+                      now.difference(orderPlacedTime).inSeconds;
+                  final isCancellable = secondsSinceOrder <= cancelledTime;
 
                   return Card(
                     margin:
@@ -229,26 +235,80 @@ class OrderHistoryPage extends StatelessWidget {
                                         color: AppColors.primaryColor,
                                       ),
                                     ),
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => OrderDetailsPage(
-                                                orderData: data,
-                                                shopId: shopId),
+                                    Row(
+                                      children: [
+                                        if (status.toLowerCase() != 'cancelled')
+                                          TextButton.icon(
+                                            onPressed: isCancellable
+                                                ? () async {
+                                                    await FirebaseFirestore
+                                                        .instance
+                                                        .collection('orders')
+                                                        .doc(userId)
+                                                        .collection('orders')
+                                                        .doc(order.id)
+                                                        .update({
+                                                      'orderStatus': 'cancelled'
+                                                    });
+
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      const SnackBar(
+                                                          content: Text(
+                                                              "Order cancelled successfully.")),
+                                                    );
+                                                  }
+                                                : () {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                            "Your order is picked, so you cannot cancel."),
+                                                      ),
+                                                    );
+                                                  },
+                                            icon: Icon(Icons.cancel,
+                                                size: 18,
+                                                color: isCancellable
+                                                    ? Colors.red
+                                                    : Colors.red
+                                                        .withOpacity(0.4)),
+                                            label: Text(
+                                              "Cancel",
+                                              style: TextStyle(
+                                                  color: isCancellable
+                                                      ? Colors.red
+                                                      : Colors.red
+                                                          .withOpacity(0.4)),
+                                            ),
                                           ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.receipt_long,
-                                          size: 18,
-                                          color: AppColors.secondaryColor),
-                                      label: const Text("Details",
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor)),
-                                    ),
+                                        const SizedBox(width: 5),
+                                        TextButton.icon(
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    OrderDetailsPage(
+                                                        orderData: data,
+                                                        shopId: shopId),
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.receipt_long,
+                                              size: 18,
+                                              color: AppColors.secondaryColor),
+                                          label: const Text("Details",
+                                              style: TextStyle(
+                                                  color: AppColors
+                                                      .secondaryColor)),
+                                        ),
+                                      ],
+                                    )
                                   ],
-                                )
+                                ),
                               ],
                             ),
                           ),

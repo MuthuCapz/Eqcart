@@ -21,10 +21,17 @@ class OrderHistoryFunctions {
             .get();
         if (doc.exists) {
           final data = doc.data()!;
+          final settingsDoc = await FirebaseFirestore.instance
+              .collection('${collection}_settings')
+              .doc(shopId)
+              .get();
+          final settingsData = settingsDoc.data() ?? {};
+
           shopDetails[shopId] = {
             'shop_name': data['shop_name'] ?? 'Unknown Shop',
             'city': data['location']?['city'] ?? 'Unknown City',
             'shop_logo': data['shop_logo'],
+            'cancelledTime': settingsData['cancelledTime'] ?? 0,
           };
           break;
         }

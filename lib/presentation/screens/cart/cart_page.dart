@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:eqcart/presentation/screens/cart/phone/phone_verification_helper.dart';
 import 'package:eqcart/presentation/screens/cart/utils/date_time_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -585,12 +586,14 @@ class _CartPageState extends State<CartPage> {
                   );
                   return;
                 }
-
+                final phoneCheckPassed = await checkAndVerifyPhoneNumber(
+                    context); // CALL NEW FUNCTION
+                if (!phoneCheckPassed) return;
                 // Check delivery time validity
                 final bool isDisabledNow =
                     await DateTimeUtils.isDeliveryNowDisabledStream().first;
 
-                if (orderType == 'Schedule Order') {
+                if (orderType == 'Scheduled Order') {
                   final bool isTodaySelected = selectedDate == 'Today';
                   final bool isInvalid = selectedDate.isEmpty ||
                       selectedTime.isEmpty ||

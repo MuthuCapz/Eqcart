@@ -112,6 +112,11 @@ Color getStatusColor(String status) {
       return Colors.green;
     case 'cancelled':
       return Colors.red;
+
+    case 'picked':
+      return Colors.indigo;
+    case 'on the way':
+      return Colors.purple;
     case 'pending':
       return Colors.orange;
     default:
@@ -123,7 +128,7 @@ int getStatusIndex(String status) {
   switch (status.toLowerCase()) {
     case 'pending':
       return 0;
-    case 'preparing':
+    case 'picked':
       return 1;
     case 'on the way':
       return 2;
