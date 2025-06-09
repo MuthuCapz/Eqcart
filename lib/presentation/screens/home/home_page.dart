@@ -6,6 +6,7 @@ import '../profile/profile_page.dart';
 import 'home_page_content/address_content.dart';
 
 import 'home_page_content/main_category_content/main_category_content.dart';
+import 'home_page_content/search/search_shop_page.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -100,18 +101,26 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
               SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: "Search food, groceries & more",
-                    prefixIcon: Icon(Icons.search, color: Colors.grey),
-                    border: InputBorder.none,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SearchShopPage()),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, color: Colors.grey),
+                      SizedBox(width: 10),
+                      Text("Search food, groceries & more",
+                          style: TextStyle(color: Colors.grey)),
+                    ],
                   ),
                 ),
               ),

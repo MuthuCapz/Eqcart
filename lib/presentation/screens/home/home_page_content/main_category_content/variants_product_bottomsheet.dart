@@ -111,7 +111,8 @@ class VariantBottomSheet extends StatelessWidget {
     required int discount,
     required String stock,
   }) {
-    final bool isInStock = stock.toLowerCase() == 'instock';
+    final normalizedStock = stock.toLowerCase().replaceAll(' ', '');
+    final bool isInStock = normalizedStock == 'instock';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -192,7 +193,7 @@ class VariantBottomSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_formatWeight(volume),
+                      Text(volume,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -267,23 +268,4 @@ class VariantBottomSheet extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatWeight(String volume) {
-  // Lowercase check for units
-  final lower = volume.toLowerCase();
-
-  // If it already contains units like 'kg', 'g', 'ml', 'l', etc., return as is
-  if (lower.contains('kg') ||
-      lower.contains('g') ||
-      lower.contains('ml') ||
-      lower.contains('lit') ||
-      lower.contains('ltr') ||
-      lower.contains('pcs') ||
-      lower.contains('piece')) {
-    return volume;
-  }
-
-  // Else, assume 'kg' is missing
-  return '$volume kg';
 }

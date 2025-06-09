@@ -232,7 +232,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
-                                    '${product['product_weight']} kg',
+                                    '${product['product_weight']}',
                                     style: TextStyle(
                                         color: Colors.grey[600], fontSize: 12),
                                   ),
