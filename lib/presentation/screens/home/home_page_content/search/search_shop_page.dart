@@ -1,9 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import '../../../../../utils/colors.dart';
 import '../main_category_content/ShopWiseCategoriesPage.dart';
+import 'search_shop_functions.dart';
 
 class SearchShopPage extends StatefulWidget {
   @override
@@ -11,189 +10,23 @@ class SearchShopPage extends StatefulWidget {
 }
 
 class _SearchShopPageState extends State<SearchShopPage> {
-  List<Map<String, dynamic>> allShops = [];
-  List<Map<String, dynamic>> filteredShops = [];
-  TextEditingController searchController = TextEditingController();
-  bool isLoading = true;
-  final FocusNode searchFocus = FocusNode();
+  late SearchShopController controller;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(searchFocus);
-    });
-    searchController.addListener(filterShops);
-    fetchMatchedShops();
+    controller = SearchShopController(context, onUpdate);
+    controller.init();
   }
 
-  void filterShops() async {
-    String query = searchController.text.trim().toLowerCase();
-
-    if (query.isEmpty) {
-      setState(() => filteredShops = allShops);
-      return;
-    }
-
-    List<Map<String, dynamic>> matchedShops = [];
-
-    for (var shop in allShops) {
-      String? shopName = shop['shop_name']?.toLowerCase();
-      String shopId = shop['shop_id'];
-
-      // 1. Check shop name match
-      if (shopName != null && shopName.contains(query)) {
-        matchedShops.add(shop);
-        continue;
-      }
-
-      // 2. Check product name match
-
-      bool found = await hasMatchingProduct(shopId, query);
-      if (found) {
-        matchedShops.add(shop);
-      }
-    }
-
-    setState(() {
-      filteredShops = matchedShops;
-    });
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
-  Future<void> fetchMatchedShops() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    final addressSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('addresses')
-        .get();
-
-    List<String> matchedIds = [];
-
-    for (var doc in addressSnapshot.docs) {
-      final data = doc.data();
-      final manual = data['manual_location'];
-      final map = data['map_location'];
-
-      final isManualDefault = manual != null && manual['isDefault'] == true;
-      final isMapDefault = map != null && map['isDefault'] == true;
-
-      if (isManualDefault || isMapDefault) {
-        matchedIds = List<String>.from(map?['matched_shop_ids'] ?? []);
-        break;
-      }
-    }
-
-    List<Map<String, dynamic>> shopsList = [];
-
-    for (String id in matchedIds) {
-      for (String collection in ['shops', 'own_shops']) {
-        final doc = await FirebaseFirestore.instance
-            .collection(collection)
-            .doc(id)
-            .get();
-        if (doc.exists) {
-          final shop = doc.data()!;
-          shopsList.add({
-            'shop_id': id,
-            'shop_name': shop['shop_name'] ?? '',
-            'shop_logo': shop['shop_logo'] ?? '',
-            'description': shop['description'] ?? '',
-            'city': shop['location']?['city'] ?? '',
-          });
-          break;
-        }
-      }
-    }
-
-    setState(() {
-      allShops = shopsList;
-      filteredShops = shopsList;
-      isLoading = false;
-    });
-  }
-
-  Future<bool> hasMatchingProduct(String shopId, String query) async {
-    final lowerQuery = query.toLowerCase();
-
-    try {
-      for (String productCollection in [
-        'shops_products',
-        'own_shops_products'
-      ]) {
-        // 1. Fetch categories dynamically from backend structure
-        List<String> categoryNames = [];
-
-        for (String categoryCollection in [
-          'shops_categories',
-          'own_shops_categories'
-        ]) {
-          final docSnapshot = await FirebaseFirestore.instance
-              .collection(categoryCollection)
-              .doc(shopId)
-              .get();
-
-          if (docSnapshot.exists &&
-              docSnapshot.data()!.containsKey('categories')) {
-            final List<dynamic> categoryArray =
-                docSnapshot.data()!['categories'];
-            for (var categoryMap in categoryArray) {
-              if (categoryMap is Map &&
-                  categoryMap.containsKey('category_name')) {
-                final name = categoryMap['category_name'];
-                if (name is String && name.trim().isNotEmpty) {
-                  categoryNames.add(name);
-                }
-              }
-            }
-          }
-        }
-
-        if (categoryNames.isEmpty) {
-          continue;
-        }
-
-        // 2. Search products in each category
-        for (String category in categoryNames) {
-          try {
-            final querySnapshot = await FirebaseFirestore.instance
-                .collection(productCollection)
-                .doc(shopId)
-                .collection(category)
-                .where('product_name', isGreaterThanOrEqualTo: lowerQuery)
-                .where('product_name',
-                    isLessThanOrEqualTo: lowerQuery + '\uf8ff')
-                .limit(1)
-                .get();
-
-            if (querySnapshot.docs.isNotEmpty) {
-              return true;
-            }
-
-            final fallbackSnapshot = await FirebaseFirestore.instance
-                .collection(productCollection)
-                .doc(shopId)
-                .collection(category)
-                .limit(20)
-                .get();
-
-            for (var doc in fallbackSnapshot.docs) {
-              final productName =
-                  (doc.data()['product_name'] ?? '').toString().toLowerCase();
-              if (productName.contains(lowerQuery)) {
-                return true;
-              }
-            }
-          } catch (e) {}
-        }
-      }
-
-      return false;
-    } catch (e) {
-      return false;
-    }
+  void onUpdate() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -201,84 +34,235 @@ class _SearchShopPageState extends State<SearchShopPage> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: AppColors.primaryColor,
         elevation: 0,
-        title: Container(
-          height: 45,
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-          ),
-          child: TextField(
-            controller: searchController,
-            focusNode: searchFocus,
-            decoration: InputDecoration(
-              icon: Icon(Icons.search, color: AppColors.primaryColor),
-              hintText: 'Search food, groceries & more...',
-              border: InputBorder.none,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Search Shops', style: TextStyle(color: Colors.white)),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Search Box
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: Colors.black12, blurRadius: 6),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: AppColors.primaryColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: controller.searchController,
+                      focusNode: controller.searchFocus,
+                      decoration: InputDecoration(
+                        hintText: 'Search food, groceries & more...',
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (_) => controller.runSearch(),
+                    ),
+                  ),
+                  if (controller.isSearching)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, right: 4),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primaryColor,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
-      body: isLoading
-          ? Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor))
-          : filteredShops.isEmpty
-              ? Center(
-                  child: Text(
-                    'No products and shops found',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.all(12),
-                  itemCount: filteredShops.length,
-                  itemBuilder: (context, index) {
-                    final shop = filteredShops[index];
-                    return Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.all(12),
-                        leading: CircleAvatar(
-                          radius: 28,
-                          backgroundImage: NetworkImage(shop['shop_logo']),
+
+          if (controller.searchController.text.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                'Showing Results for "${controller.searchController.text.trim()}" this shops',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+            ),
+
+          Expanded(
+            child: controller.isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primaryColor))
+                : controller.filteredShops.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No products and shops found',
+                          style:
+                              TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
-                        title: Text(
-                          shop['shop_name'],
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryColor,
-                          ),
-                        ),
-                        subtitle: Text(
-                          "${shop['city']} • ${shop['description']}",
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                        trailing: Icon(Icons.arrow_forward_ios_rounded,
-                            color: AppColors.secondaryColor, size: 16),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ShopCategoriesPage(
-                                shopId: shop['shop_id'],
-                                shopName: shop['shop_name'],
-                              ),
-                            ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        itemCount: controller.filteredShops.length,
+                        itemBuilder: (context, index) {
+                          final shop = controller.filteredShops[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildShopCard(shop, context),
                           );
                         },
                       ),
-                    );
-                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShopCard(Map<String, dynamic> shop, BuildContext context) {
+    final isActive = shop['isActive'] == true;
+
+    return AbsorbPointer(
+      absorbing: !isActive,
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: () {
+              if (isActive) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ShopCategoriesPage(
+                      shopId: shop['shop_id'],
+                      shopName: shop['shop_name'],
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Opacity(
+              opacity: isActive ? 1.0 : 0.5,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.green.shade100, width: 1),
                 ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: shop['shop_logo'] ?? '',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.store,
+                              size: 30, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            shop['shop_name'] ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            shop['description'] ?? 'Top rated shop',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on,
+                                  size: 14, color: Colors.redAccent),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  shop['city'] ?? '',
+                                  style: const TextStyle(fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (!isActive)
+            Positioned.fill(
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  "Temporarily Closed",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.primaryColor,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

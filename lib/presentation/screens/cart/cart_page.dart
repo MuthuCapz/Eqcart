@@ -12,6 +12,7 @@ import 'add_tip_dialog.dart';
 import 'address_showing_widget.dart';
 import 'checkout_bottom_sheet.dart';
 import 'cart_item_widget.dart';
+import 'empty_cart_widget.dart';
 import 'order_type_selector.dart';
 import 'bill_summary_widget.dart';
 
@@ -316,115 +317,118 @@ class _CartPageState extends State<CartPage> {
       ),
       body: Stack(
         children: [
-          RefreshIndicator(
-            onRefresh: () => fetchCartItems(isRefresh: true),
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                if (_isLoading || _isRefreshing)
-                  const LinearProgressIndicator(minHeight: 2),
+          if (cartItems.isEmpty && _isDataLoaded)
+            const EmptyCartWidget()
+          else
+            RefreshIndicator(
+              onRefresh: () => fetchCartItems(isRefresh: true),
+              child: ListView(
+                padding: const EdgeInsets.all(12),
+                children: [
+                  if (_isLoading || _isRefreshing)
+                    const LinearProgressIndicator(minHeight: 2),
 
-                // Cart Items
-                ...cartItems.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-                  return CartItemWidget(
-                    item: item,
-                    onQuantityChanged: (newQuantity) =>
-                        updateQuantity(index, newQuantity),
-                    onDelete: () => _showDeleteConfirmationDialog(index),
-                  );
-                }),
-
-                Column(
-                  children: [
-                    const SizedBox(height: 5),
-                    _buildAddMoreProductsButton(),
-                    const SizedBox(height: 16),
-                    _buildCouponSection(),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-                StreamBuilder<bool>(
-                  stream: DateTimeUtils.isDeliveryNowDisabledStream(),
-                  builder: (context, snapshot) {
-                    final isDeliveryNowDisabled = snapshot.data ?? false;
-
-                    return OrderTypeSelector(
-                      orderType: orderType,
-                      dateSlots: dateSlots,
-                      timeSlots: timeSlots,
-                      selectedDate: selectedDate,
-                      selectedTime: selectedTime,
-                      isDeliveryNowEnabled: !isDeliveryNowDisabled,
-                      isTodayEnabled: !isDeliveryNowDisabled,
-                      onOrderTypeChanged: (type) {
-                        setState(() {
-                          orderType = type;
-                          if (orderType == 'Schedule Order') {
-                            generateDateSlots();
-                            listenToTimeSlots();
-                          }
-                        });
-                      },
-                      onDateSelected: (date) {
-                        setState(() {
-                          selectedDate = date;
-                        });
-                      },
-                      onTimeSelected: (time) {
-                        setState(() {
-                          selectedTime = time;
-                        });
-                      },
+                  // Cart Items
+                  ...cartItems.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    return CartItemWidget(
+                      item: item,
+                      onQuantityChanged: (newQuantity) =>
+                          updateQuantity(index, newQuantity),
+                      onDelete: () => _showDeleteConfirmationDialog(index),
                     );
-                  },
-                ),
-                const SizedBox(height: 20),
+                  }),
 
-                DefaultAddressWidget(
-                  userId: userId,
-                  onAddressSelected: (address) {
-                    setState(() {
-                      selectedAddress = address;
-                    });
-                  },
-                ),
+                  Column(
+                    children: [
+                      const SizedBox(height: 5),
+                      _buildAddMoreProductsButton(),
+                      const SizedBox(height: 16),
+                      _buildCouponSection(),
+                    ],
+                  ),
 
-                const SizedBox(height: 20),
-                BillSummaryWidget(
-                  isExpanded: isOrderSummaryExpanded,
-                  totalAmount: totalAmount,
-                  deliveryTipAmount: deliveryTipAmount,
-                  onToggleExpansion: () {
-                    setState(() {
-                      isOrderSummaryExpanded = !isOrderSummaryExpanded;
-                    });
-                  },
-                  onTipAdded: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) =>
-                          AddTipDialog(initialTip: deliveryTipAmount),
-                    ).then((selectedTip) {
-                      if (selectedTip != null) {
-                        setState(() {
-                          deliveryTipAmount = selectedTip;
-                        });
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 15),
-              ],
+                  const SizedBox(height: 20),
+                  StreamBuilder<bool>(
+                    stream: DateTimeUtils.isDeliveryNowDisabledStream(),
+                    builder: (context, snapshot) {
+                      final isDeliveryNowDisabled = snapshot.data ?? false;
+
+                      return OrderTypeSelector(
+                        orderType: orderType,
+                        dateSlots: dateSlots,
+                        timeSlots: timeSlots,
+                        selectedDate: selectedDate,
+                        selectedTime: selectedTime,
+                        isDeliveryNowEnabled: !isDeliveryNowDisabled,
+                        isTodayEnabled: !isDeliveryNowDisabled,
+                        onOrderTypeChanged: (type) {
+                          setState(() {
+                            orderType = type;
+                            if (orderType == 'Schedule Order') {
+                              generateDateSlots();
+                              listenToTimeSlots();
+                            }
+                          });
+                        },
+                        onDateSelected: (date) {
+                          setState(() {
+                            selectedDate = date;
+                          });
+                        },
+                        onTimeSelected: (time) {
+                          setState(() {
+                            selectedTime = time;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  DefaultAddressWidget(
+                    userId: userId,
+                    onAddressSelected: (address) {
+                      setState(() {
+                        selectedAddress = address;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+                  BillSummaryWidget(
+                    isExpanded: isOrderSummaryExpanded,
+                    totalAmount: totalAmount,
+                    deliveryTipAmount: deliveryTipAmount,
+                    onToggleExpansion: () {
+                      setState(() {
+                        isOrderSummaryExpanded = !isOrderSummaryExpanded;
+                      });
+                    },
+                    onTipAdded: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) =>
+                            AddTipDialog(initialTip: deliveryTipAmount),
+                      ).then((selectedTip) {
+                        if (selectedTip != null) {
+                          setState(() {
+                            deliveryTipAmount = selectedTip;
+                          });
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 15),
+                ],
+              ),
             ),
-          ),
           if (_isLoading && !_isDataLoaded)
             const Center(child: CircularProgressIndicator()),
         ],
       ),
-      bottomNavigationBar: _buildCheckoutButton(),
+      bottomNavigationBar: cartItems.isNotEmpty ? _buildCheckoutButton() : null,
     );
   }
 

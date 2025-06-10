@@ -1,7 +1,10 @@
 import 'package:eqcart/presentation/screens/settings/Delete_account/delete_account_page.dart';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../map/current_location_update.dart';
+import '../../../map/google_map_screen.dart';
 import '../help_page_widget.dart';
 
 class AccountHelpPage extends StatelessWidget {
@@ -9,7 +12,6 @@ class AccountHelpPage extends StatelessWidget {
 
   static const accountOptions = [
     'Change contact details',
-    'Deactivate my account',
     'Delete My Account',
     'Add new address',
     'It\'s something else',
@@ -22,7 +24,9 @@ class AccountHelpPage extends StatelessWidget {
       options: accountOptions,
       onOptionTap: (index) {
         switch (index) {
-          case 1: // Deactivate my account
+          case 0:
+            break;
+          case 1: // Delete My Account
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -30,11 +34,16 @@ class AccountHelpPage extends StatelessWidget {
               ),
             );
             break;
-          case 2: // Delete My Account
+          case 2:
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => DeleteAccountPage(),
+                builder: (context) => ChangeNotifierProvider(
+                  create: (_) => LocationProvider()..getUserLocation(),
+                  child: GoogleMapScreen(
+                    label: '',
+                  ),
+                ),
               ),
             );
             break;
