@@ -1063,9 +1063,6 @@ class _CartPageState extends State<CartPage> {
       }
     } catch (e) {
       print('Error deleting item: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to delete item')),
-      );
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../map/current_location_update.dart';
 import '../../../map/google_map_screen.dart';
+import '../custom_query_page.dart';
 import '../help_page_widget.dart';
 
 class AccountHelpPage extends StatelessWidget {
@@ -47,6 +48,14 @@ class AccountHelpPage extends StatelessWidget {
               ),
             );
             break;
+          case 3:
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const CustomQueryPage(category: 'Accounts Inquiries'),
+              ),
+            );
           default:
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Tapped: ${accountOptions[index]}')),

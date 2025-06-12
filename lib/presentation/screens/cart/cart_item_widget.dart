@@ -134,38 +134,10 @@ class CartItemWidget extends StatelessWidget {
                 ),
 
               // Delete button (always enabled)
+              // In CartItemWidget, modify the delete IconButton to:
               IconButton(
                 icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () {
-                  if (!isAvailable) {
-                    // If not available, delete immediately
-                    onDelete();
-                  } else {
-                    // If available, show confirmation dialog
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Remove Item'),
-                        content: const Text(
-                            'Are you sure you want to remove this item?'),
-                        actions: [
-                          TextButton(
-                            child: const Text('Cancel'),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                          TextButton(
-                            child: const Text('Remove',
-                                style: TextStyle(color: Colors.red)),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              onDelete();
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
+                onPressed: onDelete, // Just call the parent's handler directly
               ),
             ],
           ),

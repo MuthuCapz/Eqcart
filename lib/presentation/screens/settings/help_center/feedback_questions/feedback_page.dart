@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
+import '../custom_query_page.dart';
 import '../help_page_widget.dart';
 
 class FeedbackPage extends StatelessWidget {
@@ -15,9 +17,29 @@ class FeedbackPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const HelpOptionsPage(
+    return HelpOptionsPage(
       title: 'Feedback & Complaints',
       options: feedbackOptions,
+      onOptionTap: (index) {
+        switch (index) {
+          case 0:
+            break;
+          case 4: // Delete My Account
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const CustomQueryPage(category: 'FeedBack Queries'),
+              ),
+            );
+            break;
+
+          default:
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Tapped: ${feedbackOptions[index]}')),
+            );
+        }
+      },
     );
   }
 }
