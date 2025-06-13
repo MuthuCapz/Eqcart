@@ -1,3 +1,4 @@
+import 'package:eqcart/presentation/screens/settings/query_status/query_view_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../utils/colors.dart';
@@ -50,6 +51,17 @@ class SettingsPage extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => HelpCenterPage()),
+        );
+      },
+    ),
+    _SettingItem(
+      icon: Icons.timelapse,
+      iconBg: Color(0xFFFFE703),
+      title: 'Query Status',
+      onTap: (context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => QueryViewPage()),
         );
       },
     ),

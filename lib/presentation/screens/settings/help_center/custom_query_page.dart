@@ -94,6 +94,7 @@ class _CustomQueryPageState extends State<CustomQueryPage> {
         'category': widget.category,
         'message': _controller.text.trim(),
         'imageUrl': imageUrl,
+        'status': "active",
         'timestamp': FieldValue.serverTimestamp(),
       });
 
