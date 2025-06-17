@@ -45,7 +45,7 @@ class _CartPageState extends State<CartPage> {
   bool _isDataLoaded = false;
   String userId = FirebaseAuth.instance.currentUser!.uid;
   StreamSubscription<DocumentSnapshot>? _cartSubscription;
-
+  Map<String, dynamic>? appliedCoupon;
   @override
   void initState() {
     super.initState();
@@ -302,6 +302,18 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
+  void _applyCoupon(Map<String, dynamic> coupon) {
+    setState(() {
+      appliedCoupon = coupon;
+    });
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      appliedCoupon = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -350,6 +362,9 @@ class _CartPageState extends State<CartPage> {
                         shopId: cartItems.isNotEmpty
                             ? cartItems[0]['shopid'] ?? ''
                             : '',
+                        totalAmount: totalAmount,
+                        onCouponApplied: _applyCoupon,
+                        onCouponRemoved: _removeCoupon,
                       ),
                     ],
                   ),
@@ -424,6 +439,7 @@ class _CartPageState extends State<CartPage> {
                         }
                       });
                     },
+                    appliedCoupon: appliedCoupon,
                   ),
                   const SizedBox(height: 15),
                 ],
@@ -479,80 +495,32 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildCouponSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                  color: AppColors.secondaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.local_offer_outlined,
-                  color: AppColors.secondaryColor),
-            ),
-            title: const Text("Apply Coupon",
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            trailing: IconButton(
-              icon: Icon(showCouponField
-                  ? Icons.keyboard_arrow_up
-                  : Icons.keyboard_arrow_down),
-              onPressed: () {
-                setState(() {
-                  showCouponField = !showCouponField;
-                });
-              },
-            ),
-          ),
-          if (showCouponField)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _couponController,
-                      decoration: InputDecoration(
-                        hintText: "Enter coupon code",
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                    ),
-                    child: const Text('Apply'),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildCheckoutButton() {
     final isButtonEnabled = _isDataLoaded && !_isRefreshing && !_isLoading;
+    final billSummary = BillSummaryWidget(
+      isExpanded: isOrderSummaryExpanded,
+      totalAmount: totalAmount,
+      deliveryTipAmount: deliveryTipAmount,
+      onToggleExpansion: () {
+        setState(() {
+          isOrderSummaryExpanded = !isOrderSummaryExpanded;
+        });
+      },
+      onTipAdded: () {
+        showDialog(
+          context: context,
+          builder: (context) => AddTipDialog(initialTip: deliveryTipAmount),
+        ).then((selectedTip) {
+          if (selectedTip != null) {
+            setState(() {
+              deliveryTipAmount = selectedTip;
+            });
+          }
+        });
+      },
+      appliedCoupon: appliedCoupon,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -665,7 +633,7 @@ class _CartPageState extends State<CartPage> {
             const Text('Proceed to Checkout',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
-            Text('₹${totalAmount + 25 + 10 + deliveryTipAmount}',
+            Text('₹${billSummary.calculatedTotal.toInt()}',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],

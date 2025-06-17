@@ -7,6 +7,7 @@ class BillSummaryWidget extends StatelessWidget {
   final double deliveryTipAmount;
   final VoidCallback onToggleExpansion;
   final VoidCallback onTipAdded;
+  final Map<String, dynamic>? appliedCoupon; // Add this parameter
 
   const BillSummaryWidget({
     super.key,
@@ -15,10 +16,39 @@ class BillSummaryWidget extends StatelessWidget {
     required this.deliveryTipAmount,
     required this.onToggleExpansion,
     required this.onTipAdded,
+    this.appliedCoupon, // Add this to constructor
   });
+
+  // Helper method to calculate discount amount
+  double _calculateDiscount(double subtotal) {
+    if (appliedCoupon == null) return 0.0;
+
+    // Check minimum order value if exists
+    final minOrderValue =
+        appliedCoupon!['minimumOrderValue']?.toDouble() ?? 0.0;
+    if (subtotal < minOrderValue) return 0.0;
+
+    final discountType = appliedCoupon!['discountType'] ?? 'percentage';
+    final discountValue = appliedCoupon!['discount']?.toDouble() ?? 0.0;
+
+    if (discountType == 'fixed') {
+      return discountValue;
+    } else {
+      return (subtotal * discountValue) / 100;
+    }
+  }
+
+  double get calculatedTotal {
+    final double discountAmount = _calculateDiscount(totalAmount);
+    final double subtotalAfterDiscount = totalAmount - discountAmount;
+    return subtotalAfterDiscount + 25 + 10 + 30 + deliveryTipAmount;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final double discountAmount = _calculateDiscount(totalAmount);
+    final double total = calculatedTotal;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -40,11 +70,11 @@ class BillSummaryWidget extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      '₹${totalAmount.toInt()}',
+                      '₹${total.toInt()}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryColor, // Or any highlight color
+                        color: AppColors.primaryColor,
                       ),
                     ),
                     const SizedBox(width: 5),
@@ -65,6 +95,12 @@ class BillSummaryWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildBillRow('Subtotal', totalAmount),
+                if (appliedCoupon != null)
+                  _buildDiscountRow(
+                    'Item Discount',
+                    discountAmount,
+                    isDiscount: true,
+                  ),
                 _buildBillRow('Delivery Fee', 25),
                 _buildBillRow('Taxes & Charges', 10),
                 _buildBillRow('Gift Packing Charge', 30),
@@ -76,7 +112,7 @@ class BillSummaryWidget extends StatelessWidget {
                 const Divider(height: 24),
                 _buildBillRow(
                   'Total',
-                  totalAmount + 25 + 10 + deliveryTipAmount,
+                  total,
                   isTotal: true,
                 ),
               ],
@@ -112,11 +148,47 @@ class BillSummaryWidget extends StatelessWidget {
           GestureDetector(
             onTap: onTapTip,
             child: Text(
-              amount == 0 ? 'Add Tip' : '₹${amount.toInt()}',
+              amount == 0 && label == 'Delivery Tips'
+                  ? 'Add Tip'
+                  : '₹${amount.toInt()}',
               style: TextStyle(
-                color: amount == 0 ? Colors.red : Colors.black,
-                fontWeight: amount == 0 ? FontWeight.bold : FontWeight.normal,
+                color: amount == 0 && label == 'Delivery Tips'
+                    ? Colors.red
+                    : Colors.black,
+                fontWeight: amount == 0 && label == 'Delivery Tips'
+                    ? FontWeight.bold
+                    : isTotal
+                        ? FontWeight.bold
+                        : FontWeight.normal,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiscountRow(
+    String label,
+    double amount, {
+    bool isDiscount = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+            ),
+          ),
+          Text(
+            '-₹${amount.toInt()}',
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
