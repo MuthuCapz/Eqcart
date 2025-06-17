@@ -12,6 +12,7 @@ import 'add_tip_dialog.dart';
 import 'address_showing_widget.dart';
 import 'checkout_bottom_sheet.dart';
 import 'cart_item_widget.dart';
+import 'coupon_section.dart';
 import 'empty_cart_widget.dart';
 import 'order_type_selector.dart';
 import 'bill_summary_widget.dart';
@@ -345,7 +346,11 @@ class _CartPageState extends State<CartPage> {
                       const SizedBox(height: 5),
                       _buildAddMoreProductsButton(),
                       const SizedBox(height: 16),
-                      _buildCouponSection(),
+                      CouponSection(
+                        shopId: cartItems.isNotEmpty
+                            ? cartItems[0]['shopid'] ?? ''
+                            : '',
+                      ),
                     ],
                   ),
 
