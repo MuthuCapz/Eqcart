@@ -30,7 +30,6 @@ class _CartPageState extends State<CartPage> {
   double totalAmount = 0;
   double deliveryTipAmount = 0;
   bool isOrderSummaryExpanded = false;
-  final TextEditingController _couponController = TextEditingController();
   String orderType = 'Delivery Now';
   String selectedDate = 'Today';
   String selectedTime = '';
@@ -51,6 +50,103 @@ class _CartPageState extends State<CartPage> {
     super.initState();
     _loadInitialData();
     startTimerForOrderType();
+    _loadPersistedTip();
+    _loadPersistedCoupon();
+  }
+
+  Future<void> _loadPersistedCoupon() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('cart_state')
+          .doc('applied_coupon')
+          .get();
+
+      if (userDoc.exists && mounted) {
+        setState(() {
+          appliedCoupon = userDoc.data();
+        });
+      }
+    } catch (e) {
+      print('Error loading persisted coupon: $e');
+    }
+  }
+
+  Future<void> _persistCoupon(Map<String, dynamic>? coupon) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final couponRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('cart_state')
+          .doc('applied_coupon');
+
+      if (coupon == null) {
+        await couponRef.delete();
+      } else {
+        await couponRef.set(coupon);
+      }
+    } catch (e) {
+      print('Error persisting coupon: $e');
+    }
+  }
+
+  void _applyCoupon(Map<String, dynamic> coupon) {
+    setState(() {
+      appliedCoupon = coupon;
+    });
+    _persistCoupon(coupon); // Add this line
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      appliedCoupon = null;
+    });
+    _persistCoupon(null); // Add this line
+  }
+
+  Future<void> _loadPersistedTip() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('cart_state')
+          .doc('delivery_tip')
+          .get();
+
+      if (userDoc.exists && mounted) {
+        setState(() {
+          deliveryTipAmount = (userDoc.data()?['amount'] ?? 0).toDouble();
+        });
+      }
+    } catch (e) {
+      print('Error loading persisted tip: $e');
+    }
+  }
+
+  Future<void> _persistTip(double amount) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('cart_state')
+          .doc('delivery_tip')
+          .set({'amount': amount});
+    } catch (e) {
+      print('Error persisting tip: $e');
+    }
   }
 
   Future<void> _loadInitialData() async {
@@ -302,18 +398,6 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  void _applyCoupon(Map<String, dynamic> coupon) {
-    setState(() {
-      appliedCoupon = coupon;
-    });
-  }
-
-  void _removeCoupon() {
-    setState(() {
-      appliedCoupon = null;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -353,21 +437,34 @@ class _CartPageState extends State<CartPage> {
                     );
                   }),
 
-                  Column(
-                    children: [
-                      const SizedBox(height: 5),
-                      _buildAddMoreProductsButton(),
-                      const SizedBox(height: 16),
-                      CouponSection(
-                        shopId: cartItems.isNotEmpty
-                            ? cartItems[0]['shopid'] ?? ''
-                            : '',
-                        totalAmount: totalAmount,
-                        onCouponApplied: _applyCoupon,
-                        onCouponRemoved: _removeCoupon,
-                      ),
-                    ],
-                  ),
+                  // In your CartPage build method, wrap the CouponSection with:
+                  if (_isLoading || _isRefreshing)
+                    LinearProgressIndicator(
+                      minHeight: 0.1,
+                      backgroundColor:
+                          AppColors.backgroundColor.withOpacity(0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.backgroundColor),
+                    )
+                  else if (_isDataLoaded)
+                    Column(
+                      children: [
+                        const SizedBox(height: 5),
+                        _buildAddMoreProductsButton(),
+                        const SizedBox(height: 16),
+                        CouponSection(
+                          key: ValueKey(
+                              'coupon_${cartItems.isNotEmpty ? cartItems[0]['shopid'] ?? '' : ''}'),
+                          shopId: cartItems.isNotEmpty
+                              ? cartItems[0]['shopid'] ?? ''
+                              : '',
+                          totalAmount: totalAmount,
+                          onCouponApplied: _applyCoupon,
+                          onCouponRemoved: _removeCoupon,
+                          initialAppliedCoupon: appliedCoupon,
+                        ),
+                      ],
+                    ),
 
                   const SizedBox(height: 20),
                   StreamBuilder<bool>(
@@ -436,6 +533,7 @@ class _CartPageState extends State<CartPage> {
                           setState(() {
                             deliveryTipAmount = selectedTip;
                           });
+                          _persistTip(selectedTip);
                         }
                       });
                     },
@@ -495,8 +593,27 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  double getCalculatedTotal() {
+    return BillSummaryWidget.calculateTotal(
+      totalAmount: totalAmount,
+      deliveryTipAmount: deliveryTipAmount,
+      appliedCoupon: appliedCoupon,
+    );
+  }
+
+  void _clearCartState() {
+    setState(() {
+      appliedCoupon = null;
+      deliveryTipAmount = 0;
+    });
+    _persistCoupon(null);
+    _persistTip(0);
+  }
+
   Widget _buildCheckoutButton() {
     final isButtonEnabled = _isDataLoaded && !_isRefreshing && !_isLoading;
+
+    final calculatedTotal = getCalculatedTotal();
     final billSummary = BillSummaryWidget(
       isExpanded: isOrderSummaryExpanded,
       totalAmount: totalAmount,
@@ -570,7 +687,7 @@ class _CartPageState extends State<CartPage> {
                 final bool isDisabledNow =
                     await DateTimeUtils.isDeliveryNowDisabledStream().first;
 
-                if (orderType == 'Scheduled Order') {
+                if (orderType == 'Schedule Order') {
                   final bool isTodaySelected = selectedDate == 'Today';
                   final bool isInvalid = selectedDate.isEmpty ||
                       selectedTime.isEmpty ||
@@ -611,11 +728,28 @@ class _CartPageState extends State<CartPage> {
                         BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                   builder: (context) => CheckoutBottomSheet(
-                    totalAmount: totalAmount + 25 + 10 + deliveryTipAmount,
+                    totalAmount: calculatedTotal, // Consistent amount
                     deliveryDetails: deliveryDetails,
                     selectedAddress: selectedAddress,
+                    deliveryTipAmount: deliveryTipAmount,
+                    appliedCoupon: appliedCoupon,
+                    subtotal:
+                        totalAmount, // Pass subtotal (original amount before discounts)
+                    itemDiscount: BillSummaryWidget.calculateDiscount(
+                      subtotal: totalAmount,
+                      coupon: appliedCoupon,
+                    ), // Pass calculated discount
+                    deliveryFee: 25, // Your fixed delivery fee
+                    taxesCharges: 10, // Your fixed taxes & charges
+                    giftPackingCharge: 30,
+
+                    onPaymentFailure: _clearCartState,
                   ),
-                );
+                ).then((failure) {
+                  if (failure == true) {
+                    _clearPersistedCartData();
+                  }
+                });
               }
             : null,
         style: ElevatedButton.styleFrom(
@@ -640,6 +774,34 @@ class _CartPageState extends State<CartPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _clearPersistedCartData() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+
+      final couponRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('cart_state')
+          .doc('applied_coupon');
+
+      final tipRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('cart_state')
+          .doc('delivery_tip');
+
+      batch.delete(couponRef);
+      batch.delete(tipRef);
+
+      await batch.commit();
+    } catch (e) {
+      print('Error clearing persisted cart data: $e');
+    }
   }
 
   void generateDateSlots() {

@@ -20,16 +20,18 @@ class BillSummaryWidget extends StatelessWidget {
   });
 
   // Helper method to calculate discount amount
-  double _calculateDiscount(double subtotal) {
-    if (appliedCoupon == null) return 0.0;
+  static double calculateDiscount({
+    required double subtotal,
+    required Map<String, dynamic>? coupon,
+  }) {
+    if (coupon == null) return 0.0;
 
     // Check minimum order value if exists
-    final minOrderValue =
-        appliedCoupon!['minimumOrderValue']?.toDouble() ?? 0.0;
+    final minOrderValue = coupon['minimumOrderValue']?.toDouble() ?? 0.0;
     if (subtotal < minOrderValue) return 0.0;
 
-    final discountType = appliedCoupon!['discountType'] ?? 'percentage';
-    final discountValue = appliedCoupon!['discount']?.toDouble() ?? 0.0;
+    final discountType = coupon['discountType'] ?? 'percentage';
+    final discountValue = coupon['discount']?.toDouble() ?? 0.0;
 
     if (discountType == 'fixed') {
       return discountValue;
@@ -38,15 +40,35 @@ class BillSummaryWidget extends StatelessWidget {
     }
   }
 
-  double get calculatedTotal {
-    final double discountAmount = _calculateDiscount(totalAmount);
+  // Static method for calculating total
+  static double calculateTotal({
+    required double totalAmount,
+    required double deliveryTipAmount,
+    required Map<String, dynamic>? appliedCoupon,
+  }) {
+    final double discountAmount = calculateDiscount(
+      subtotal: totalAmount,
+      coupon: appliedCoupon,
+    );
     final double subtotalAfterDiscount = totalAmount - discountAmount;
     return subtotalAfterDiscount + 25 + 10 + 30 + deliveryTipAmount;
   }
 
+  // Instance version that uses the static methods
+  double get calculatedTotal {
+    return calculateTotal(
+      totalAmount: totalAmount,
+      deliveryTipAmount: deliveryTipAmount,
+      appliedCoupon: appliedCoupon,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double discountAmount = _calculateDiscount(totalAmount);
+    final double discountAmount = calculateDiscount(
+      subtotal: totalAmount,
+      coupon: appliedCoupon,
+    );
     final double total = calculatedTotal;
 
     return Container(

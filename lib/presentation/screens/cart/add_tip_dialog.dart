@@ -29,7 +29,9 @@ class _AddTipDialogState extends State<AddTipDialog> {
   }
 
   String _getButtonText() {
-    if (selectedTip != null) {
+    if (selectedTip == 0) {
+      return 'Add Tip';
+    } else if (selectedTip != null) {
       return '₹${selectedTip!}';
     } else if (_customTipController.text.isNotEmpty) {
       final value = double.tryParse(_customTipController.text) ?? 0;
@@ -77,6 +79,10 @@ class _AddTipDialogState extends State<AddTipDialog> {
               spacing: 12,
               runSpacing: 12,
               children: [
+                _NoTipButton(
+                  isSelected: selectedTip == 0,
+                  onTap: () => _selectTip(0),
+                ),
                 _TipAmountButton(
                   amount: 10,
                   isSelected: selectedTip == 10,
@@ -130,20 +136,19 @@ class _AddTipDialogState extends State<AddTipDialog> {
               height: 50,
               child: ElevatedButton(
                 onPressed: () {
-                  double finalTip = 0;
+                  double finalTip = 0.0;
                   if (selectedTip != null) {
                     finalTip = selectedTip!.toDouble();
                   } else if (_customTipController.text.isNotEmpty) {
-                    finalTip = double.tryParse(_customTipController.text) ?? 0;
+                    finalTip =
+                        double.tryParse(_customTipController.text) ?? 0.0;
                   }
-                  if (finalTip > 0) {
-                    Navigator.pop(context, finalTip);
-                  } else {
-                    Navigator.pop(context, null);
-                  }
+                  Navigator.pop(context, finalTip);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
+                  backgroundColor: selectedTip == 0
+                      ? Colors.grey[300]
+                      : AppColors.primaryColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -151,15 +156,47 @@ class _AddTipDialogState extends State<AddTipDialog> {
                 ),
                 child: Text(
                   _getButtonText(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: selectedTip == 0 ? Colors.black : Colors.white,
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoTipButton extends StatelessWidget {
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NoTipButton({required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 72,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.grey[300] : Colors.white,
+          border: Border.all(color: Colors.grey),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            'No Tip',
+            style: TextStyle(
+              color: isSelected ? Colors.black : Colors.grey,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );

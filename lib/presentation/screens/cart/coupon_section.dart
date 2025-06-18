@@ -8,6 +8,7 @@ class CouponSection extends StatefulWidget {
   final double totalAmount;
   final Function(Map<String, dynamic>) onCouponApplied;
   final Function() onCouponRemoved;
+  final Map<String, dynamic>? initialAppliedCoupon;
 
   const CouponSection({
     super.key,
@@ -15,6 +16,7 @@ class CouponSection extends StatefulWidget {
     required this.shopId,
     required this.onCouponApplied,
     required this.onCouponRemoved,
+    this.initialAppliedCoupon,
   });
 
   @override
@@ -28,14 +30,32 @@ class _CouponSectionState extends State<CouponSection> {
   List<Map<String, dynamic>> _availableCoupons = [];
   bool _isLoadingCoupons = false;
   Map<String, dynamic>? _appliedCoupon;
-
+  bool _initialLoadComplete = false;
   @override
   void initState() {
     super.initState();
-    _fetchCouponsForShop(widget.shopId);
+    _appliedCoupon = widget.initialAppliedCoupon;
+    if (!_initialLoadComplete) {
+      _fetchCouponsForShop(widget.shopId);
+    }
+  }
+
+  @override
+  void didUpdateWidget(CouponSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only update if the shopId changed or it's the initial load
+    if (widget.shopId != oldWidget.shopId || !_initialLoadComplete) {
+      _fetchCouponsForShop(widget.shopId);
+    }
+    if (widget.initialAppliedCoupon != oldWidget.initialAppliedCoupon) {
+      setState(() {
+        _appliedCoupon = widget.initialAppliedCoupon;
+      });
+    }
   }
 
   Future<void> _fetchCouponsForShop(String shopId) async {
+    if (_initialLoadComplete) return;
     setState(() {
       _isLoadingCoupons = true;
     });
@@ -142,6 +162,7 @@ class _CouponSectionState extends State<CouponSection> {
     } finally {
       setState(() {
         _isLoadingCoupons = false;
+        _initialLoadComplete = true;
       });
     }
   }
@@ -252,14 +273,16 @@ class _CouponSectionState extends State<CouponSection> {
 
       // Create a consistent coupon data structure
       final appliedCouponData = {
-        'couponCode': couponData['couponCode'] ??
-            couponData['code'], // Handle both field names
+        'code': couponData['couponCode'] ?? couponData['code'],
         'description': couponData['description'] ?? '',
         'discount': discountValue,
         'discountType': discountType,
+        'fixedAmount': fixedAmount > 0 ? fixedAmount : 0,
+        'percentage': fixedAmount > 0 ? 0 : discountPercentage,
+        'minimumOrderValue': minOrderValue,
         'validFrom': couponData['validFrom'],
         'validTo': couponData['validTo'],
-        'documentRef': couponDoc!.reference,
+        'documentRef': couponDoc.reference.path,
       };
 
       // Apply the coupon
@@ -268,10 +291,10 @@ class _CouponSectionState extends State<CouponSection> {
         showCouponField = false;
       });
 
-      widget.onCouponApplied(_appliedCoupon!);
+      // Pass the complete coupon data to parent
+      widget.onCouponApplied(appliedCouponData);
 
       final discountText = getCouponLabel(couponData);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Coupon Applied: $discountText')),
       );
@@ -280,6 +303,10 @@ class _CouponSectionState extends State<CouponSection> {
         SnackBar(content: Text('Error applying coupon: ${e.toString()}')),
       );
     }
+  }
+
+  String getCouponCode(Map<String, dynamic> coupon) {
+    return coupon['code'] ?? coupon['couponCode'] ?? '';
   }
 
   String getCouponLabel(Map<String, dynamic> coupon) {
@@ -373,7 +400,7 @@ class _CouponSectionState extends State<CouponSection> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "${_appliedCoupon!['couponCode']} Applied",
+                                "${_appliedCoupon!['code'] ?? _appliedCoupon!['couponCode']} Applied",
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 14),
                               ),
@@ -617,9 +644,14 @@ class _CouponSectionState extends State<CouponSection> {
                                                         const Text("EXPIRED"),
                                                   )
                                                 : _appliedCoupon != null &&
-                                                        _appliedCoupon![
-                                                                'couponCode'] ==
-                                                            coupon['couponCode']
+                                                        (_appliedCoupon![
+                                                                    'code'] ==
+                                                                coupon[
+                                                                    'couponCode'] ||
+                                                            _appliedCoupon![
+                                                                    'couponCode'] ==
+                                                                coupon[
+                                                                    'couponCode'])
                                                     ? ElevatedButton(
                                                         onPressed: null,
                                                         style: ElevatedButton

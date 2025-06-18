@@ -7,12 +7,28 @@ class CheckoutBottomSheet extends StatefulWidget {
   final double totalAmount;
   final Map<String, dynamic> deliveryDetails;
   final String? selectedAddress;
+  final double deliveryTipAmount;
+  final Map<String, dynamic>? appliedCoupon;
+  final VoidCallback onPaymentFailure;
+  final double subtotal;
+  final double itemDiscount;
+  final double deliveryFee;
+  final double taxesCharges;
+  final double giftPackingCharge;
 
   const CheckoutBottomSheet({
     Key? key,
     required this.totalAmount,
     required this.deliveryDetails,
     required this.selectedAddress,
+    required this.deliveryTipAmount,
+    this.appliedCoupon,
+    required this.onPaymentFailure,
+    required this.subtotal,
+    required this.itemDiscount,
+    required this.deliveryFee,
+    required this.taxesCharges,
+    required this.giftPackingCharge,
   }) : super(key: key);
 
   @override
@@ -24,13 +40,40 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
   late PaymentService paymentService;
   double walletBalance = 0.0;
 
+  String getCouponDiscountText(Map<String, dynamic> coupon) {
+    final discountType = coupon['discountType'];
+    final discountValue = coupon['discount'];
+
+    if (discountType == 'fixed') {
+      return '₹${discountValue.toString()} OFF';
+    } else if (discountType == 'percentage') {
+      return '${discountValue.toString()}% OFF';
+    }
+    return 'Discount Applied';
+  }
+
   @override
   void initState() {
     super.initState();
+
+    String? couponDiscountText;
+    if (widget.appliedCoupon != null) {
+      couponDiscountText = getCouponDiscountText(widget.appliedCoupon!);
+    }
+
     paymentService = PaymentService(
       context: context,
       orderTotalAmount: widget.totalAmount,
       deliveryDetails: widget.deliveryDetails,
+      deliveryTipAmount: widget.deliveryTipAmount,
+      appliedCoupon: widget.appliedCoupon,
+      couponDiscountText: couponDiscountText,
+      subtotal: widget.subtotal,
+      itemDiscount: widget.itemDiscount,
+      deliveryFee: widget.deliveryFee,
+      taxesCharges: widget.taxesCharges,
+      giftPackingCharge: widget.giftPackingCharge,
+      onPaymentFailure: widget.onPaymentFailure,
       onOrderCompleted: () {
         Navigator.pushReplacement(
           context,
@@ -98,6 +141,12 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
 
           const SizedBox(height: 24),
 
+          // Show coupon summary if available
+          if (widget.appliedCoupon != null) ...[
+            _buildCouponSummary(widget.appliedCoupon!),
+            const SizedBox(height: 16),
+          ],
+
           // Total + Place Order
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -136,10 +185,11 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
     );
   }
 
-  Widget _buildPaymentOption(
-      {required Widget icon,
-      required String title,
-      required VoidCallback onTap}) {
+  Widget _buildPaymentOption({
+    required Widget icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -205,9 +255,10 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
                 const Text(
                   "Eqcart Wallet",
                   style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryColor),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryColor,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -225,6 +276,35 @@ class _CheckoutBottomSheetState extends State<CheckoutBottomSheet> {
                 isWalletUsed = value;
               });
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponSummary(Map<String, dynamic> coupon) {
+    final code = coupon['code'] ?? '';
+    final discountText = getCouponDiscountText(coupon);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.local_offer, color: Colors.green),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Coupon Applied: $code ($discountText)',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.green,
+              ),
+            ),
           ),
         ],
       ),
@@ -249,9 +329,10 @@ class OrderSuccessPage extends StatelessWidget {
             const Text(
               "Order Successful!",
               style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryColor),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryColor,
+              ),
             ),
             const SizedBox(height: 30),
             ElevatedButton(

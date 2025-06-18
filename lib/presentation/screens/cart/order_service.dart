@@ -9,7 +9,13 @@ class OrderService {
     required String shippingAddress,
     required Map<String, dynamic> deliveryDetails,
     String couponCode = '',
+    String couponValue = '',
     double deliveryTip = 0,
+    required double subtotal,
+    required double itemDiscount,
+    required double deliveryFee,
+    required double taxesCharges,
+    required double giftPackingCharge,
   }) async {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -78,7 +84,17 @@ class OrderService {
       'deliveryDetails': deliveryDetails,
       'items': cartItems,
       'couponCode': couponCode,
+      'couponValue': couponValue,
       'deliveryTip': deliveryTip,
+      'amountDetails': {
+        'subtotal': subtotal,
+        'itemDiscount': itemDiscount,
+        'deliveryFee': deliveryFee,
+        'taxesCharges': taxesCharges,
+        'giftPacking': giftPackingCharge,
+        'deliveryTip': deliveryTip,
+        'total': orderTotal,
+      },
     });
 
     // 4. Clear cart properly - delete each product field inside the cart document

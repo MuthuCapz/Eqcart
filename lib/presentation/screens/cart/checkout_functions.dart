@@ -12,6 +12,15 @@ class PaymentService {
   final Map<String, dynamic> deliveryDetails;
   final Function onOrderCompleted;
   final String? selectedAddress;
+  final double deliveryTipAmount;
+  final Map<String, dynamic>? appliedCoupon;
+  final String? couponDiscountText;
+  final VoidCallback? onPaymentFailure;
+  final double subtotal;
+  final double itemDiscount;
+  final double deliveryFee;
+  final double taxesCharges;
+  final double giftPackingCharge;
 
   double _walletBalance = 0.0;
   bool _walletDeducted = false;
@@ -22,6 +31,15 @@ class PaymentService {
     required this.deliveryDetails,
     required this.onOrderCompleted,
     required this.selectedAddress,
+    required this.deliveryTipAmount,
+    this.appliedCoupon,
+    this.couponDiscountText,
+    this.onPaymentFailure,
+    required this.subtotal,
+    required this.itemDiscount,
+    required this.deliveryFee,
+    required this.taxesCharges,
+    required this.giftPackingCharge,
   });
 
   void init() {
@@ -81,10 +99,18 @@ class PaymentService {
       paymentMethod: 'Razorpay',
       deliveryDetails: deliveryDetails,
       shippingAddress: selectedAddress ?? 'N/A',
-      couponCode: 'SUMMER10',
-      deliveryTip: 10,
+      couponCode: appliedCoupon?['code'] ?? '',
+      couponValue: couponDiscountText ?? 'N/A',
+      deliveryTip: deliveryTipAmount,
+      subtotal: subtotal,
+      itemDiscount: itemDiscount,
+      deliveryFee: deliveryFee,
+      taxesCharges: taxesCharges,
+      giftPackingCharge: giftPackingCharge,
     );
-
+    if (onPaymentFailure != null) {
+      onPaymentFailure!();
+    }
     onOrderCompleted();
     if (_walletDeducted) {
       // Payment failed, refund back to wallet
