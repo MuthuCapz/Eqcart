@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -171,6 +172,14 @@ class _CouponSectionState extends State<CouponSection> {
     final couponCode = _couponController.text.trim();
     if (couponCode.isEmpty) return;
 
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to apply coupons')),
+      );
+      return;
+    }
+
     try {
       // First check shop-specific coupons
       final shopCouponDoc = await FirebaseFirestore.instance
@@ -256,6 +265,45 @@ class _CouponSectionState extends State<CouponSection> {
         return;
       }
 
+      // Check daily limit if it exists (per user)
+      if (couponData.containsKey('dailyLimit')) {
+        final dailyLimit = couponData['dailyLimit'] as int? ?? 0;
+        if (dailyLimit > 0) {
+          // Get today's date in YYYY-MM-DD format
+          final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+          // Check how many times this user has used this coupon today
+          final userCouponUsageRef = FirebaseFirestore.instance
+              .collection('coupon_usage')
+              .doc(couponCode)
+              .collection('users')
+              .doc(user.uid)
+              .collection('daily_usage')
+              .doc(today);
+
+          final usageDoc = await userCouponUsageRef.get();
+          final currentUsage = (usageDoc.data()?['count'] as int? ?? 0);
+
+          if (currentUsage >= dailyLimit) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text(
+                      'You have reached your daily limit for this coupon. Try again tomorrow.')),
+            );
+            return;
+          }
+
+          // Increment the usage count for this user
+          await userCouponUsageRef.set({
+            'count': FieldValue.increment(1),
+            'lastUsed': FieldValue.serverTimestamp(),
+            'couponCode': couponCode,
+            'userId': user.uid,
+            'date': today,
+          }, SetOptions(merge: true));
+        }
+      }
+
       // Validate discount values
       final fixedAmount = couponData['fixedAmount']?.toDouble() ?? 0.0;
       final discountPercentage = couponData['discount']?.toDouble() ?? 0.0;
@@ -283,6 +331,7 @@ class _CouponSectionState extends State<CouponSection> {
         'validFrom': couponData['validFrom'],
         'validTo': couponData['validTo'],
         'documentRef': couponDoc.reference.path,
+        'dailyLimit': couponData['dailyLimit'],
       };
 
       // Apply the coupon

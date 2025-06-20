@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../utils/colors.dart';
+import 'billing_details_dialog.dart';
 import 'order_details_functions.dart';
 import 'order_status_progress.dart';
 
@@ -205,21 +206,21 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Payment",
-                                  style: TextStyle(
-                                      color: Colors.grey[600], fontSize: 14),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "${orderData['paymentMethod'] ?? 'Unknown'}",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15),
-                                ),
-                              ]),
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Payment",
+                                style: TextStyle(
+                                    color: Colors.grey[600], fontSize: 14),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "${orderData['paymentMethod'] ?? 'Unknown'}",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 15),
+                              ),
+                            ],
+                          ),
                         ),
                         buildPaymentStatusTag(paymentStatus),
                       ],
@@ -230,34 +231,33 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   // Bill Details
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
+                        const Text(
+                          "Total",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                        Row(
                           children: [
-                            Icon(Icons.receipt, color: AppColors.primaryColor),
-                            SizedBox(width: 12),
                             Text(
-                              "Bill Details",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 16),
+                              "₹${orderData['orderTotal'] ?? 0}",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.expand_more),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => BillingDetailsDialog(
+                                      orderData: orderData),
+                                );
+                              },
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        buildBillRow("Subtotal",
-                            "₹${orderData['subtotal'] ?? orderData['orderTotal']}"),
-                        buildBillRow("Delivery Charge",
-                            "₹${orderData['deliveryCharge'] ?? 0}"),
-                        if ((orderData['deliveryTip'] ?? 0) > 0)
-                          buildBillRow("Tip", "₹${orderData['deliveryTip']}"),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 1,
-                          color: Colors.grey[200],
-                        ),
-                        const SizedBox(height: 8),
-                        buildBillRow("Total", "₹${orderData['orderTotal']}",
-                            isBold: true, isTotal: true),
                       ],
                     ),
                   ),
